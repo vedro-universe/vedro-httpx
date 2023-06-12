@@ -4,21 +4,21 @@ from typing import Any, Tuple, Union
 
 from httpx import Response
 from pygments.lexer import Lexer
-from pygments.lexers import HttpLexer, JsonLexer, get_lexer_for_mimetype
+from pygments.lexers import HttpLexer, JsonLexer, TextLexer, get_lexer_for_mimetype
 from pygments.util import ClassNotFound
 from rich.console import RenderResult
 from rich.syntax import Syntax
 
-__all__ = ("format_response",)
+__all__ = ("render_response",)
 
 
-def format_response(response: Response) -> RenderResult:
+def render_response(response: Response, *, theme: str = "ansi_dark") -> RenderResult:
     yield "Response:"
     headers, http_lexer = format_response_headers(response)
-    yield Syntax(headers, http_lexer, theme="ansi_dark")
+    yield Syntax(headers, http_lexer, theme=theme)
 
     body, lexer = format_response_body(response)
-    yield Syntax(body, lexer, theme="ansi_dark", background_color="default", indent_guides=True)
+    yield Syntax(body, lexer, theme=theme, background_color="default", indent_guides=True)
 
 
 def format_response_headers(response: Response) -> Tuple[str, Lexer]:
@@ -37,12 +37,12 @@ def format_response_body(response: Response) -> Tuple[Any, Union[Lexer, str]]:
     try:
         lexer = get_lexer_for_mimetype(mime_type.strip())
     except ClassNotFound:
-        lexer = ""  # type: ignore
+        return f"<binary len={len(response.content)}>", ""
 
     code = response.text
     if isinstance(lexer, JsonLexer):
         try:
             code = json.dumps(response.json(), indent=4)
         except BaseException:
-            pass
+            return code, TextLexer()
     return code, lexer
