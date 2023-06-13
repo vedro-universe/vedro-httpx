@@ -12,13 +12,15 @@ from rich.syntax import Syntax
 __all__ = ("render_response",)
 
 
-def render_response(response: Response, *, theme: str = "ansi_dark") -> RenderResult:
+def render_response(response: Response, *,
+                    theme: str = "ansi_dark", code_width: int = 1024 ** 2) -> RenderResult:
     yield "Response:"
     headers, http_lexer = format_response_headers(response)
-    yield Syntax(headers, http_lexer, theme=theme)
+    yield Syntax(headers, http_lexer, theme=theme, code_width=code_width)
 
     body, lexer = format_response_body(response)
-    yield Syntax(body, lexer, theme=theme, background_color="default", indent_guides=True)
+    yield Syntax(body, lexer, theme=theme, background_color="default",
+                 indent_guides=True, code_width=code_width)
 
 
 def format_response_headers(response: Response) -> Tuple[str, Lexer]:
