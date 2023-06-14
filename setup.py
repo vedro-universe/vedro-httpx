@@ -22,6 +22,7 @@ setup(
     python_requires=">=3.8",
     url="https://github.com/vedro-universe/vedro-httpx",
     project_urls={
+        "Docs": "https://vedro.io/docs/integrations/httpx-client",
         "GitHub": "https://github.com/vedro-universe/vedro-httpx",
     },
     license="Apache-2.0",

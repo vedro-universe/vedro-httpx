@@ -78,3 +78,7 @@ class Api(AsyncHTTPInterface):
     async def register(self, creds: dict[str, str]) -> Response:
         return await self._request("POST", "/auth/register", json=creds)
 ```
+
+## Documentation
+
+Check out the [documentation](https://vedro.io/docs/integrations/httpx-client) for additional information about `vedro-httpx`.

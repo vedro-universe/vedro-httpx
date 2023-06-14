@@ -42,10 +42,11 @@ class AsyncHTTPInterface(vedro.Interface):
         super().__init__()
         self._base_url = base_url
 
-    # Docs https://www.python-httpx.org/advanced/
+    # Docs https://www.python-httpx.org/api/#asyncclient
     def _client(self, **kwargs: Any) -> AsyncClient:
         return AsyncClient(**kwargs)
 
+    # Arguments are duplicated to provide auto-completion
     async def _request(self,
                        method: str,
                        url: Union[URL, str],

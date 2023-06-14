@@ -53,20 +53,20 @@ def test_format_response_no_body():
         code, lexer = format_response_body(response)
 
     with then:
-        assert code == "<binary len=0>"
+        assert code == "<binary preview=b'' len=0>"
         assert lexer == ""
 
 
 def test_format_response_no_content_type():
     with given:
-        body = b"{}"
+        body = b"a04e8431ff62"
         response = Response(status_code=200, content=body)
 
     with when:
         code, lexer = format_response_body(response)
 
     with then:
-        assert code == f"<binary len={len(body)}>"
+        assert code == f"<binary preview={body[:10]} len={len(body)}>"
         assert lexer == ""
 
 

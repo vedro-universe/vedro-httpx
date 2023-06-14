@@ -19,8 +19,7 @@ def render_response(response: Response, *,
     yield Syntax(headers, http_lexer, theme=theme, code_width=code_width)
 
     body, lexer = format_response_body(response)
-    yield Syntax(body, lexer, theme=theme, background_color="default",
-                 indent_guides=True, code_width=code_width)
+    yield Syntax(body, lexer, theme=theme, indent_guides=True, code_width=code_width)
 
 
 def format_response_headers(response: Response) -> Tuple[str, Lexer]:
@@ -39,7 +38,8 @@ def format_response_body(response: Response) -> Tuple[Any, Union[Lexer, str]]:
     try:
         lexer = get_lexer_for_mimetype(mime_type.strip())
     except ClassNotFound:
-        return f"<binary len={len(response.content)}>", ""
+        preview = response.content[:10]
+        return f"<binary preview={preview!r} len={len(response.content)}>", ""
 
     code = response.text
     if isinstance(lexer, JsonLexer):

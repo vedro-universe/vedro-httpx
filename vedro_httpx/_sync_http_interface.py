@@ -41,10 +41,11 @@ class SyncHTTPInterface(vedro.Interface):
         super().__init__()
         self._base_url = base_url
 
-    # Docs https://www.python-httpx.org/advanced/
+    # Docs https://www.python-httpx.org/api/#client
     def _client(self, **kwargs: Any) -> SyncClient:
         return SyncClient(**kwargs)
 
+    # Arguments are duplicated to provide auto-completion
     def _request(self,
                  method: str,
                  url: Union[URL, str],
