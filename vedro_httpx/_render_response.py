@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Any, Tuple, Union
+from typing import Any, Optional, Tuple, Union
 
 from httpx import Response
 from pygments.lexer import Lexer
@@ -13,13 +13,14 @@ __all__ = ("render_response",)
 
 
 def render_response(response: Response, *,
-                    theme: str = "ansi_dark", code_width: int = 1024 ** 2) -> RenderResult:
+                    theme: str = "ansi_dark", width: Optional[int] = None) -> RenderResult:
     yield "Response:"
     headers, http_lexer = format_response_headers(response)
-    yield Syntax(headers, http_lexer, theme=theme, code_width=code_width)
+    yield Syntax(headers, http_lexer, theme=theme, word_wrap=True, code_width=width)
 
     body, lexer = format_response_body(response)
-    yield Syntax(body, lexer, theme=theme, indent_guides=True, code_width=code_width)
+    yield Syntax(body, lexer,
+                 theme=theme, word_wrap=True, indent_guides=True, code_width=width)
 
 
 def format_response_headers(response: Response) -> Tuple[str, Lexer]:
