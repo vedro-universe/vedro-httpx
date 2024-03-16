@@ -1,4 +1,6 @@
-from typing import List
+from email.utils import parsedate_to_datetime
+from http.cookies import Morsel, SimpleCookie
+from typing import Any, List
 
 import httpx
 
@@ -56,7 +58,7 @@ class HARFormatter:
             "status": response.status_code,
             "statusText": response.reason_phrase,
             "httpVersion": http_version,
-            "cookies": [],  # add cookies
+            "cookies": self.format_cookies(response),
             "headers": self.format_headers(response.headers),
             "content": {
                 "size": len(response.content),
@@ -72,3 +74,31 @@ class HARFormatter:
 
     def format_query_params(self, params: httpx.QueryParams) -> List[har.QueryParam]:
         return [{"name": key, "value": val} for key, val in params.multi_items()]
+
+    def format_cookies(self, response: httpx.Response) -> List[har.Cookie]:
+        cookies = []
+        for header in response.headers.get_list("Set-Cookie"):
+            cookie: SimpleCookie[Any] = SimpleCookie()
+            cookie.load(header)
+            for name, morsel in cookie.items():
+                cookies.append(self._format_cookie(name, morsel))
+        return cookies
+
+    def _format_cookie(self, name: str, morsel: Morsel[Any]) -> har.Cookie:
+        cookie: har.Cookie = {"name": name, "value": morsel.value}
+        if path := morsel["path"]:
+            cookie["path"] = path
+        if domain := morsel["domain"]:
+            cookie["domain"] = domain
+        if expires := morsel["expires"]:
+            try:
+                expires = parsedate_to_datetime(expires)
+            except BaseException:
+                pass
+            else:
+                cookie["expires"] = expires.isoformat()
+        if morsel["httponly"]:
+            cookie["httpOnly"] = True
+        if morsel["secure"]:
+            cookie["secure"] = True
+        return cookie

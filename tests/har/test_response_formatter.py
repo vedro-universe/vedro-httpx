@@ -76,3 +76,43 @@ def test_response_with_redirect(*, formatter: HARFormatter, respx_mock: RouterTy
             ],
             redirectURL="/redirected"
         )
+
+
+def test_response_with_cookies(*, formatter: HARFormatter, respx_mock: RouterType,
+                               httpx_client: HTTPClientType):
+    with given:
+        cookie_attrs = ("Domain=localhost; expires=Sat, 01-Jan-2024 00:00:00 GMT; HttpOnly; "
+                        "Max-Age=3600; Path=/; SameSite=Strict; Secure; Version=1")
+
+        respx_mock.get("/").respond(200, headers=[
+            ("set-cookie", "name1=value1"),
+            ("set-cookie", f"name2=value2; {cookie_attrs}"),
+        ])
+        with httpx_client() as client:
+            response = client.get("/")
+
+    with when:
+        result = formatter.format_response(response)
+
+    with then:
+        assert result == build_response(
+            headers=[
+                {"name": "set-cookie", "value": "name1=value1"},
+                {"name": "set-cookie", "value": f"name2=value2; {cookie_attrs}"}
+            ],
+            cookies=[
+                {
+                    "name": "name1",
+                    "value": "value1"
+                },
+                {
+                    "name": "name2",
+                    "value": "value2",
+                    "path": "/",
+                    "domain": "localhost",
+                    "expires": "2024-01-01T00:00:00+00:00",
+                    "httpOnly": True,
+                    "secure": True,
+                }
+            ]
+        )
