@@ -1,5 +1,11 @@
 # http://www.softwareishard.com/blog/har-12-spec/
-from typing import List, NotRequired, TypedDict
+import sys
+from typing import List, TypedDict
+
+if sys.version_info < (3, 11):
+    from typing_extensions import NotRequired
+else:
+    from typing import NotRequired
 
 __all__ = ("Creator", "Browser", "PageTimings", "Page", "Cookie", "Header", "QueryParam",
            "PostParam", "PostData", "Content", "Request", "Response", "CacheState", "Cache",
