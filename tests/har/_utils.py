@@ -1,4 +1,4 @@
-from typing import Any, Callable, List, Optional, TypeAlias
+from typing import Any, Callable, List, Optional
 
 import httpx
 import pytest
@@ -14,7 +14,7 @@ __all__ = ("formatter", "respx_mock", "httpx_client", "build_url", "build_reques
 
 
 HTTPClientType = Callable[..., httpx.Client]
-RouterType: TypeAlias = respx.Router
+RouterType = respx.Router
 
 
 def build_url(path: str = "/", params: Optional[httpx.QueryParams] = None, *,
@@ -62,7 +62,7 @@ def build_response(headers: Optional[List[HeaderType]] = None, **kwargs: Any) ->
         "headers": headers_,
         "content": {
             "size": 0,
-            "mimeType": "",
+            "mimeType": "x-unknown",
         },
         "redirectURL": "",
         "headersSize": -1,

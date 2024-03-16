@@ -116,3 +116,102 @@ def test_response_with_cookies(*, formatter: HARFormatter, respx_mock: RouterTyp
                 }
             ]
         )
+
+
+def test_response_with_text_content(*, formatter: HARFormatter, respx_mock: RouterType,
+                                    httpx_client: HTTPClientType):
+    with given:
+        respx_mock.get("/").respond(200, text="text")
+        with httpx_client() as client:
+            response = client.get("/")
+
+    with when:
+        result = formatter.format_response(response)
+
+    with then:
+        assert result == build_response(
+            headers=[
+                {"name": "content-length", "value": "4"},
+                {"name": "content-type", "value": "text/plain; charset=utf-8"},
+            ],
+            content={
+                "size": 4,
+                "mimeType": "text/plain; charset=utf-8",
+                "text": "text"
+            }
+        )
+
+
+def test_response_with_json_content(*, formatter: HARFormatter, respx_mock: RouterType,
+                                    httpx_client: HTTPClientType):
+    with given:
+        respx_mock.get("/").respond(200, json={"key": "value"})
+        with httpx_client() as client:
+            response = client.get("/")
+
+    with when:
+        result = formatter.format_response(response)
+
+    with then:
+        assert result == build_response(
+            headers=[
+                {"name": "content-length", "value": "16"},
+                {"name": "content-type", "value": "application/json"},
+            ],
+            content={
+                "size": 16,
+                "mimeType": "application/json",
+                "text": '{"key": "value"}'
+            }
+        )
+
+
+def test_response_with_binary_content(*, formatter: HARFormatter, respx_mock: RouterType,
+                                      httpx_client: HTTPClientType):
+    with given:
+        respx_mock.get("/").respond(200, content=b"binary")
+        with httpx_client() as client:
+            response = client.get("/")
+
+    with when:
+        result = formatter.format_response(response)
+
+    with then:
+        print("result", result)
+        assert result == build_response(
+            headers=[
+                {"name": "content-length", "value": "6"},
+            ],
+            content={
+                "size": 6,
+                "mimeType": "x-unknown",
+                "encoding": "base64",
+                "text": "YmluYXJ5"
+            }
+        )
+
+
+def test_response_with_octet_stream_content(*, formatter: HARFormatter, respx_mock: RouterType,
+                                            httpx_client: HTTPClientType):
+    with given:
+        respx_mock.get("/").respond(200, content=b"binary",
+                                    content_type="application/octet-stream")
+        with httpx_client() as client:
+            response = client.get("/")
+
+    with when:
+        result = formatter.format_response(response)
+
+    with then:
+        assert result == build_response(
+            headers=[
+                {"name": "content-length", "value": "6"},
+                {"name": "content-type", "value": "application/octet-stream"},
+            ],
+            content={
+                "size": 6,
+                "mimeType": "application/octet-stream",
+                "encoding": "base64",
+                "text": "YmluYXJ5"
+            }
+        )

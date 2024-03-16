@@ -1,3 +1,4 @@
+from base64 import b64encode
 from email.utils import parsedate_to_datetime
 from http.cookies import Morsel, SimpleCookie
 from typing import Any, List
@@ -58,12 +59,9 @@ class HARFormatter:
             "status": response.status_code,
             "statusText": response.reason_phrase,
             "httpVersion": http_version,
-            "cookies": self.format_cookies(response),
+            "cookies": self._format_cookies(response),
             "headers": self.format_headers(response.headers),
-            "content": {
-                "size": len(response.content),
-                "mimeType": response.headers.get("Content-Type", ""),
-            },
+            "content": self.format_response_content(response),
             "redirectURL": response.headers.get("Location", ""),
             "headersSize": -1,
             "bodySize": -1,
@@ -75,7 +73,23 @@ class HARFormatter:
     def format_query_params(self, params: httpx.QueryParams) -> List[har.QueryParam]:
         return [{"name": key, "value": val} for key, val in params.multi_items()]
 
-    def format_cookies(self, response: httpx.Response) -> List[har.Cookie]:
+    def format_response_content(self, response: httpx.Response) -> har.Content:
+        content_type = response.headers.get("Content-Type", "x-unknown")
+        content: har.Content = {
+            "size": len(response.content),
+            "mimeType": content_type,
+        }
+
+        if len(response.content) > 0:
+            if content_type.startswith("text/") or content_type.startswith("application/json"):
+                content["text"] = response.content.decode()
+            else:
+                content["encoding"] = "base64"
+                content["text"] = b64encode(response.content).decode()
+
+        return content
+
+    def _format_cookies(self, response: httpx.Response) -> List[har.Cookie]:
         cookies = []
         for header in response.headers.get_list("Set-Cookie"):
             cookie: SimpleCookie[Any] = SimpleCookie()
@@ -84,7 +98,7 @@ class HARFormatter:
                 cookies.append(self._format_cookie(name, morsel))
         return cookies
 
-    def _format_cookie(self, name: str, morsel: Morsel[Any]) -> har.Cookie:
+    def _format_cookie(self, name: str, morsel: "Morsel[Any]") -> har.Cookie:
         cookie: har.Cookie = {"name": name, "value": morsel.value}
         if path := morsel["path"]:
             cookie["path"] = path
@@ -92,11 +106,9 @@ class HARFormatter:
             cookie["domain"] = domain
         if expires := morsel["expires"]:
             try:
-                expires = parsedate_to_datetime(expires)
+                cookie["expires"] = parsedate_to_datetime(expires).isoformat()
             except BaseException:
                 pass
-            else:
-                cookie["expires"] = expires.isoformat()
         if morsel["httponly"]:
             cookie["httpOnly"] = True
         if morsel["secure"]:
