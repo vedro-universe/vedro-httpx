@@ -1,7 +1,10 @@
 from base64 import b64encode
+from email.message import Message
+from email.parser import Parser
 from email.utils import parsedate_to_datetime
 from http.cookies import Morsel, SimpleCookie
 from typing import Any, List
+from urllib.parse import parse_qsl
 
 import httpx
 
@@ -24,8 +27,8 @@ class HARFormatter:
 
     def format_entry(self, response: httpx.Response, request: httpx.Request) -> har.Entry:
         formatted_response = self.format_response(response)
-        http_version = formatted_response["httpVersion"]  # https://www.python-httpx.org/http2/
-        formatted_request = self.format_request(request, http_version=http_version)
+        # httpx does not provide the HTTP version of the request
+        formatted_request = self.format_request(request, http_version=response.http_version)
         return {
             "startedDateTime": "2021-01-01T00:00:00.000Z",  # update
             "time": 0,  # update
@@ -41,31 +44,35 @@ class HARFormatter:
 
     def format_request(self, request: httpx.Request, *,
                        http_version: str = "HTTP/1.1") -> har.Request:
-        return {
+        cookies = request.headers.get_list("Cookie")
+        formatted: har.Request = {
             "method": request.method,
             "url": str(request.url),
             "httpVersion": http_version,
-            "cookies": [],  # add cookies
+            "cookies": self._format_cookies(cookies),
             "headers": self.format_headers(request.headers),
             "queryString": self.format_query_params(request.url.params),
-            # add postData
             "headersSize": -1,
             "bodySize": -1,
         }
+        if request.content:
+            formatted["postData"] = self.format_request_post_data(request)
+        return formatted
 
     def format_response(self, response: httpx.Response) -> har.Response:
-        http_version = response.extensions.get("http_version", b"HTTP/1.1").decode()
-        return {
+        cookies = response.headers.get_list("Set-Cookie")
+        formatted: har.Response = {
             "status": response.status_code,
             "statusText": response.reason_phrase,
-            "httpVersion": http_version,
-            "cookies": self._format_cookies(response),
+            "httpVersion": response.http_version,
+            "cookies": self._format_cookies(cookies),
             "headers": self.format_headers(response.headers),
             "content": self.format_response_content(response),
             "redirectURL": response.headers.get("Location", ""),
             "headersSize": -1,
             "bodySize": -1,
         }
+        return formatted
 
     def format_headers(self, headers: httpx.Headers) -> List[har.Header]:
         return [{"name": key, "value": val} for key, val in headers.multi_items()]
@@ -81,7 +88,7 @@ class HARFormatter:
         }
 
         if len(response.content) > 0:
-            if content_type.startswith("text/") or content_type.startswith("application/json"):
+            if self._is_text_content(content_type):
                 content["text"] = response.content.decode()
             else:
                 content["encoding"] = "base64"
@@ -89,9 +96,59 @@ class HARFormatter:
 
         return content
 
-    def _format_cookies(self, response: httpx.Response) -> List[har.Cookie]:
+    def format_request_post_data(self, request: httpx.Request) -> har.PostData:
+        content_type = request.headers.get("Content-Type", "x-unknown")
+        post_data: har.PostData = {
+            "mimeType": content_type,
+            "text": "",
+        }
+        if content_type.startswith("application/x-www-form-urlencoded"):
+            post_data["text"] = request.content.decode()
+            post_data["params"] = self._format_url_encoded_params(post_data["text"])
+        elif content_type.startswith("multipart/form-data"):
+            post_data["text"] = request.content.decode()
+            post_data["params"] = self._format_multi_part_params(post_data["text"], content_type)
+        elif self._is_text_content(content_type):
+            post_data["text"] = request.content.decode()
+        else:
+            post_data["text"] = "binary"
+
+        return post_data
+
+    def _is_text_content(self, content_type: str) -> bool:
+        return content_type.startswith("text/") or content_type.startswith("application/json")
+
+    def _format_url_encoded_params(self, payload: str) -> List[har.PostParam]:
+        try:
+            parsed = parse_qsl(payload)
+        except BaseException:
+            return []
+        else:
+            return [{"name": name, "value": value} for name, value in parsed]
+
+    def _format_multi_part_params(self, payload: str, content_type: str) -> List[har.PostParam]:
+        params: List[har.PostParam] = []
+
+        try:
+            parser = Parser()
+            # Preparing the content in the format required by email.parser
+            message: Message = parser.parsestr(f"Content-Type: {content_type}\r\n\r\n{payload}")
+            for part in message.get_payload():
+                name = part.get_param("name", header="Content-Disposition")
+                content_type = part.get_content_type()
+                if self._is_text_content(content_type):
+                    value = part.get_payload()
+                else:
+                    value = "(binary)"
+                params.append({"name": name, "value": value})
+        except BaseException:
+            pass
+
+        return params
+
+    def _format_cookies(self, headers: List[str]) -> List[har.Cookie]:
         cookies = []
-        for header in response.headers.get_list("Set-Cookie"):
+        for header in headers:
             cookie: SimpleCookie[Any] = SimpleCookie()
             cookie.load(header)
             for name, morsel in cookie.items():
@@ -108,7 +165,7 @@ class HARFormatter:
             try:
                 cookie["expires"] = parsedate_to_datetime(expires).isoformat()
             except BaseException:
-                pass
+                cookie["comment"] = f"Invalid date format: {expires}"
         if morsel["httponly"]:
             cookie["httpOnly"] = True
         if morsel["secure"]:

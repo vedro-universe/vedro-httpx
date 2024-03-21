@@ -130,11 +130,11 @@ class PostData(TypedDict):
     # Mime type of posted data.
     mimeType: str
 
-    # List of posted parameters (in case of URL encoded parameters).
-    params: List[PostParam]
-
     # Plain text posted data
     text: str
+
+    # List of posted parameters (in case of URL encoded parameters).
+    params: NotRequired[List[PostParam]]
 
     # A comment provided by the user or the application.
     comment: NotRequired[str]
