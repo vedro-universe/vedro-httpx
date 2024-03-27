@@ -177,7 +177,6 @@ def test_response_with_binary_content(*, formatter: HARFormatter, respx_mock: Ro
         result = formatter.format_response(response)
 
     with then:
-        print("result", result)
         assert result == build_response(
             headers=[
                 {"name": "content-length", "value": "6"},
@@ -213,5 +212,33 @@ def test_response_with_octet_stream_content(*, formatter: HARFormatter, respx_mo
                 "mimeType": "application/octet-stream",
                 "encoding": "base64",
                 "text": "YmluYXJ5"
+            }
+        )
+
+
+def test_stream_response(*, formatter: HARFormatter, respx_mock: RouterType,
+                         httpx_client: HTTPClientType):
+    with given:
+        respx_mock.get("/").respond(200, content=b"binary")
+        with httpx_client() as client:
+            with client.stream("GET", "/") as response:
+                # Manipulating `response._content` directly is a workaround due to respx's
+                # limitations in simulating streaming behavior
+                delattr(response, "_content")
+                response.is_stream_consumed = True
+
+    with when:
+        result = formatter.format_response(response)
+
+    with then:
+        assert result == build_response(
+            headers=[
+                {"name": "content-length", "value": "6"},
+            ],
+            content={
+                "size": 0,
+                "mimeType": "x-unknown",
+                "text": "(stream)",
+                "comment": "Stream consumed"
             }
         )

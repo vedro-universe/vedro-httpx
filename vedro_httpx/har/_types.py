@@ -191,9 +191,9 @@ class Request(TypedDict):
     # Posted data info.
     postData: NotRequired[PostData]
 
-    #  Total number of bytes from the start of the HTTP request message until (and including)
-    #  the double CRLF before the body.
-    #  Set to -1 if the info is not available.
+    # Total number of bytes from the start of the HTTP request message until (and including)
+    # the double CRLF before the body.
+    # Set to -1 if the info is not available.
     headersSize: int
 
     # Size of the request body (POST data payload) in bytes.

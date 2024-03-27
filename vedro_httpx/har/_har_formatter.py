@@ -3,7 +3,7 @@ from email.message import Message
 from email.parser import Parser
 from email.utils import parsedate_to_datetime
 from http.cookies import Morsel, SimpleCookie
-from typing import Any, List
+from typing import Any, List, Tuple, cast
 from urllib.parse import parse_qsl
 
 import httpx
@@ -11,140 +11,17 @@ import httpx
 import vedro_httpx
 import vedro_httpx.har._types as har
 
+from ._har_builder import HARBuilder
+
 __all__ = ("HARFormatter",)
 
 
-class HARFormatter:
-    def format(self, responses: List[httpx.Response]) -> har.Log:
-        return {
-            "version": "1.2",
-            "creator": {
-                "name": "vedro-httpx",
-                "version": vedro_httpx.__version__,
-            },
-            "entries": [self.format_entry(response, response.request) for response in responses],
-        }
-
-    def format_entry(self, response: httpx.Response, request: httpx.Request) -> har.Entry:
-        formatted_response = self.format_response(response)
-        # httpx does not provide the HTTP version of the request
-        formatted_request = self.format_request(request, http_version=response.http_version)
-        return {
-            "startedDateTime": "2021-01-01T00:00:00.000Z",  # update
-            "time": 0,  # update
-            "request": formatted_request,
-            "response": formatted_response,
-            "cache": {},
-            "timings": {
-                "send": 0,
-                "wait": 0,
-                "receive": 0,
-            },
-        }
-
-    def format_request(self, request: httpx.Request, *,
-                       http_version: str = "HTTP/1.1") -> har.Request:
-        cookies = request.headers.get_list("Cookie")
-        formatted: har.Request = {
-            "method": request.method,
-            "url": str(request.url),
-            "httpVersion": http_version,
-            "cookies": self._format_cookies(cookies),
-            "headers": self.format_headers(request.headers),
-            "queryString": self.format_query_params(request.url.params),
-            "headersSize": -1,
-            "bodySize": -1,
-        }
-        if request.content:
-            formatted["postData"] = self.format_request_post_data(request)
-        return formatted
-
-    def format_response(self, response: httpx.Response) -> har.Response:
-        cookies = response.headers.get_list("Set-Cookie")
-        formatted: har.Response = {
-            "status": response.status_code,
-            "statusText": response.reason_phrase,
-            "httpVersion": response.http_version,
-            "cookies": self._format_cookies(cookies),
-            "headers": self.format_headers(response.headers),
-            "content": self.format_response_content(response),
-            "redirectURL": response.headers.get("Location", ""),
-            "headersSize": -1,
-            "bodySize": -1,
-        }
-        return formatted
-
-    def format_headers(self, headers: httpx.Headers) -> List[har.Header]:
-        return [{"name": key, "value": val} for key, val in headers.multi_items()]
-
-    def format_query_params(self, params: httpx.QueryParams) -> List[har.QueryParam]:
-        return [{"name": key, "value": val} for key, val in params.multi_items()]
-
-    def format_response_content(self, response: httpx.Response) -> har.Content:
-        content_type = response.headers.get("Content-Type", "x-unknown")
-        content: har.Content = {
-            "size": len(response.content),
-            "mimeType": content_type,
-        }
-
-        if len(response.content) > 0:
-            if self._is_text_content(content_type):
-                content["text"] = response.content.decode()
-            else:
-                content["encoding"] = "base64"
-                content["text"] = b64encode(response.content).decode()
-
-        return content
-
-    def format_request_post_data(self, request: httpx.Request) -> har.PostData:
-        content_type = request.headers.get("Content-Type", "x-unknown")
-        post_data: har.PostData = {
-            "mimeType": content_type,
-            "text": "",
-        }
-        if content_type.startswith("application/x-www-form-urlencoded"):
-            post_data["text"] = request.content.decode()
-            post_data["params"] = self._format_url_encoded_params(post_data["text"])
-        elif content_type.startswith("multipart/form-data"):
-            post_data["text"] = request.content.decode()
-            post_data["params"] = self._format_multi_part_params(post_data["text"], content_type)
-        elif self._is_text_content(content_type):
-            post_data["text"] = request.content.decode()
-        else:
-            post_data["text"] = "binary"
-
-        return post_data
-
-    def _is_text_content(self, content_type: str) -> bool:
-        return content_type.startswith("text/") or content_type.startswith("application/json")
-
-    def _format_url_encoded_params(self, payload: str) -> List[har.PostParam]:
-        try:
-            parsed = parse_qsl(payload)
-        except BaseException:
-            return []
-        else:
-            return [{"name": name, "value": value} for name, value in parsed]
-
-    def _format_multi_part_params(self, payload: str, content_type: str) -> List[har.PostParam]:
-        params: List[har.PostParam] = []
-
-        try:
-            parser = Parser()
-            # Preparing the content in the format required by email.parser
-            message: Message = parser.parsestr(f"Content-Type: {content_type}\r\n\r\n{payload}")
-            for part in message.get_payload():
-                name = part.get_param("name", header="Content-Disposition")
-                content_type = part.get_content_type()
-                if self._is_text_content(content_type):
-                    value = part.get_payload()
-                else:
-                    value = "(binary)"
-                params.append({"name": name, "value": value})
-        except BaseException:
-            pass
-
-        return params
+class BaseHARFormatter:
+    def __init__(self, creator_name: str = "vedro-httpx",
+                 creator_version: str = vedro_httpx.__version__) -> None:
+        self._builder = HARBuilder()
+        self._creator_name = creator_name
+        self._creator_version = creator_version
 
     def _format_cookies(self, headers: List[str]) -> List[har.Cookie]:
         cookies = []
@@ -155,19 +32,180 @@ class HARFormatter:
                 cookies.append(self._format_cookie(name, morsel))
         return cookies
 
+    def _format_headers(self, headers: httpx.Headers) -> List[har.Header]:
+        return [self._builder.build_header(name, val) for name, val in headers.multi_items()]
+
+    def _format_query_params(self, params: httpx.QueryParams) -> List[har.QueryParam]:
+        return [self._builder.build_query_param(name, val) for name, val in params.multi_items()]
+
     def _format_cookie(self, name: str, morsel: "Morsel[Any]") -> har.Cookie:
-        cookie: har.Cookie = {"name": name, "value": morsel.value}
-        if path := morsel["path"]:
-            cookie["path"] = path
-        if domain := morsel["domain"]:
-            cookie["domain"] = domain
-        if expires := morsel["expires"]:
+        path = morsel["path"] if morsel["path"] else None
+        domain = morsel["domain"] if morsel["domain"] else None
+        http_only = morsel["httponly"] if morsel["httponly"] else None
+        secure = morsel["secure"] if morsel["secure"] else None
+        expires = morsel["expires"] if morsel["expires"] else None
+        comment = None
+
+        if expires:
             try:
-                cookie["expires"] = parsedate_to_datetime(expires).isoformat()
+                expires = parsedate_to_datetime(expires).isoformat()
             except BaseException:
-                cookie["comment"] = f"Invalid date format: {expires}"
-        if morsel["httponly"]:
-            cookie["httpOnly"] = True
-        if morsel["secure"]:
-            cookie["secure"] = True
-        return cookie
+                expires = None
+                comment = f"Invalid date format: {morsel['expires']}"
+
+        return self._builder.build_cookie(name, morsel.value, path, domain, expires,
+                                          http_only, secure, comment=comment)
+
+    def _format_request_post_data(self, content: bytes, content_type: str) -> har.PostData:
+        if content_type.startswith("application/x-www-form-urlencoded"):
+            text, params = self._format_url_encoded(content)
+            return self._builder.build_post_data(content_type, text, params)
+
+        if content_type.startswith("multipart/form-data"):
+            text, params = self._format_multipart(content, content_type)
+            return self._builder.build_post_data(content_type, text, params)
+
+        if self._is_text_content(content_type):
+            text = content.decode()
+            return self._builder.build_post_data(content_type, text)
+
+        return self._builder.build_post_data(content_type, "binary")
+
+    def _format_url_encoded(self, content: bytes) -> Tuple[str, List[har.PostParam]]:
+        payload = content.decode()
+        try:
+            parsed = parse_qsl(payload)
+        except BaseException:
+            return payload, []
+        post_params = [self._builder.build_post_param(name, value) for name, value in parsed]
+        return payload, post_params
+
+    def _format_multipart(self, content: bytes,
+                          content_type: str) -> Tuple[str, List[har.PostParam]]:
+        payload = content.decode("ASCII", errors="surrogateescape")
+
+        post_params = []
+        multipart = self._parse_multipart(payload, content_type)
+        for part in multipart.get_payload():
+            name = part.get_param("name", header="Content-Disposition")
+            value = part.get_payload(decode=True).decode()
+            filename = part.get_param("filename", header="Content-Disposition")
+
+            if filename:
+                part_type = part.get_content_type()
+                post_param = self._builder.build_post_param(name, value, filename, part_type)
+            else:
+                post_param = self._builder.build_post_param(name, value)
+            post_params.append(post_param)
+
+        content_str = multipart.as_string()
+        header_len = content_str.find("\n\n") + 2
+        return content_str[header_len:], post_params
+
+    def _parse_multipart(self, payload: str, content_type: str) -> Message:
+        parser = Parser()
+        message: Message = parser.parsestr(f"Content-Type: {content_type}\r\n\r\n{payload}")
+
+        for part in message.get_payload():
+            if part.get_param("filename", header="Content-Disposition"):
+                part.set_payload("(binary)")
+
+        return message
+
+    def _format_elapsed(self, response: httpx.Response) -> int:
+        try:
+            elapsed = response.elapsed
+        except RuntimeError:
+            return 0
+        return int(elapsed.total_seconds() * 1000)
+
+    def _format_response_content(self, content: bytes, content_type: str) -> har.Content:
+        size = len(content)
+        if size == 0:
+            return self._builder.build_response_content(content_type, size)
+
+        if self._is_text_content(content_type):
+            text = content.decode()
+            return self._builder.build_response_content(content_type, size, text)
+        else:
+            text = b64encode(content).decode()
+            return self._builder.build_response_content(content_type, size, text,
+                                                        encoding="base64")
+
+    def _is_text_content(self, content_type: str) -> bool:
+        return (
+            content_type.startswith("text/") or
+            content_type.startswith("application/json") or
+            content_type.startswith("application/xml")
+        )
+
+    def _get_request_cookies(self, headers: httpx.Headers) -> List[str]:
+        return headers.get_list("Cookie")
+
+    def _get_response_cookies(self, headers: httpx.Headers) -> List[str]:
+        return headers.get_list("Set-Cookie")
+
+    def _get_location_header(self, headers: httpx.Headers) -> str:
+        return cast(str, headers.get("Location", ""))
+
+    def _get_content_type(self, headers: httpx.Headers) -> str:
+        return cast(str, headers.get("Content-Type", "x-unknown"))
+
+
+class HARFormatter(BaseHARFormatter):
+    def format(self, responses: List[httpx.Response]) -> har.Log:
+        creator = self._builder.build_creator(self._creator_name, self._creator_version)
+
+        entries = []
+        for response in responses:
+            entry = self.format_entry(response, response.request)
+            entries.append(entry)
+
+        return self._builder.build_log(creator, entries)
+
+    def format_entry(self, response: httpx.Response, request: httpx.Request) -> har.Entry:
+        formatted_response = self.format_response(response)
+        # httpx does not provide the HTTP version of the request
+        formatted_request = self.format_request(request, http_version=response.http_version)
+
+        started_at = "2021-01-01T00:00:00.000Z"
+        time = self._format_elapsed(response)
+        return self._builder.build_entry(formatted_request, formatted_response, started_at, time)
+
+    def format_request(self, request: httpx.Request, *,
+                       http_version: str = "HTTP/1.1") -> har.Request:
+        if content := request.read():
+            content_type = self._get_content_type(request.headers)
+            post_data = self._format_request_post_data(content, content_type)
+        else:
+            post_data = None
+
+        return self._builder.build_request(
+            method=request.method,
+            url=str(request.url),
+            http_version=http_version,
+            query_string=self._format_query_params(request.url.params),
+            headers=self._format_headers(request.headers),
+            cookies=self._format_cookies(self._get_request_cookies(request.headers)),
+            post_data=post_data,
+        )
+
+    def format_response(self, response: httpx.Response) -> har.Response:
+        return self._builder.build_response(
+            status=response.status_code,
+            status_text=response.reason_phrase,
+            http_version=response.http_version,
+            cookies=self._format_cookies(self._get_response_cookies(response.headers)),
+            headers=self._format_headers(response.headers),
+            content=self.format_response_content(response),
+            redirect_url=self._get_location_header(response.headers),
+        )
+
+    def format_response_content(self, response: httpx.Response) -> har.Content:
+        content_type = self._get_content_type(response.headers)
+        try:
+            content = response.read()
+        except httpx.StreamConsumed:
+            return self._builder.build_response_content(content_type, size=0, text="(stream)",
+                                                        comment="Stream consumed")
+        return self._format_response_content(content, content_type)

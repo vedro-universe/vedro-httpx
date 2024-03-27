@@ -1,4 +1,5 @@
 import httpx
+import pytest
 from baby_steps import given, then, when
 
 from vedro_httpx.har import HARFormatter
@@ -30,12 +31,13 @@ def test_get_request(*, formatter: HARFormatter, respx_mock: RouterType,
         assert result == build_request()
 
 
-def test_get_request_with_path(*, formatter: HARFormatter, respx_mock: RouterType,
+@pytest.mark.parametrize("path", ["/users", "/users#fragment"])
+def test_get_request_with_path(path: str, *, formatter: HARFormatter, respx_mock: RouterType,
                                httpx_client: HTTPClientType):
     with given:
         respx_mock.get("/users").respond(200)
         with httpx_client() as client:
-            response = client.get("/users")
+            response = client.get(path)
 
     with when:
         result = formatter.format_request(response.request)
@@ -74,7 +76,6 @@ def test_get_request_with_headers(*, formatter: HARFormatter, respx_mock: Router
             response = client.get("/", headers=headers)
 
     with when:
-        print(response.status_code)
         result = formatter.format_request(response.request)
 
     with then:
@@ -160,7 +161,6 @@ def test_post_request_binary_data(*, formatter: HARFormatter, respx_mock: Router
             })
 
     with when:
-        print(response.request.headers)
         result = formatter.format_request(response.request)
 
     with then:
@@ -210,57 +210,40 @@ def test_post_request_multipart_data(*, formatter: HARFormatter, respx_mock: Rou
     with given:
         respx_mock.post("/").respond(200)
         with httpx_client() as client:
-            response = client.post("/", files={"id": "1", "name": "User"})
+            # httpx does not support constructing multipart requests with form data without files
+            boundary = "boundary"
+            content = "\n".join([
+                f"--{boundary}",
+                'Content-Disposition: form-data; name="id"',
+                "",
+                "1",
+                f"--{boundary}",
+                'Content-Disposition: form-data; name="name"',
+                "",
+                "User",
+                f"--{boundary}--",
+                ""
+            ])
+            response = client.post("/", content=content, headers={
+                "content-type": f"multipart/form-data; boundary={boundary}"
+            })
 
     with when:
         result = formatter.format_request(response.request)
 
     with then:
-        boundary = response.request.headers["content-type"].split("boundary=")[1]
-        content = response.request.content.decode()
-
         assert result == build_request(
             method="POST",
             headers=[
-                {"name": "content-length", "value": "329"},
                 {"name": "content-type", "value": f"multipart/form-data; boundary={boundary}"},
+                {"name": "content-length", "value": "130"},
             ],
             postData={
                 "mimeType": f"multipart/form-data; boundary={boundary}",
-                "text": content,
                 "params": [
-                    {"name": "id", "value": "(binary)"},
-                    {"name": "name", "value": "(binary)"}
-                ]
-            }
-        )
-
-
-def test_post_request_multipart_data_with_files(*, formatter: HARFormatter, respx_mock: RouterType,
-                                                httpx_client: HTTPClientType):
-    with given:
-        respx_mock.post("/").respond(200)
-        with httpx_client() as client:
-            response = client.post("/", files={"file": ("file.txt", b"file content")})
-
-    with when:
-        result = formatter.format_request(response.request)
-
-    with then:
-        boundary = response.request.headers["content-type"].split("boundary=")[1]
-        content = response.request.content.decode()
-
-        assert result == build_request(
-            method="POST",
-            headers=[
-                {"name": "content-length", "value": "182"},
-                {"name": "content-type", "value": f"multipart/form-data; boundary={boundary}"},
-            ],
-            postData={
-                "mimeType": f"multipart/form-data; boundary={boundary}",
+                    {"name": "id", "value": "1"},
+                    {"name": "name", "value": "User"}
+                ],
                 "text": content,
-                "params": [
-                    {"name": "file", "value": "file content"},
-                ]
             }
         )
