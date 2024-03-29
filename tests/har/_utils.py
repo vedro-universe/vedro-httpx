@@ -1,4 +1,4 @@
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List, Optional, Tuple
 
 import httpx
 import pytest
@@ -69,6 +69,15 @@ def build_response(headers: Optional[List[HeaderType]] = None, **kwargs: Any) ->
         "bodySize": -1,
         **kwargs
     }
+
+
+def get_request_multipart(request: httpx.Request,
+                          file_content: Optional[bytes] = None) -> Tuple[str, str]:
+    boundary = request.headers["content-type"].split("boundary=")[1]
+    payload = request.content.decode()
+    if file_content:
+        payload = payload.replace(file_content.decode(), "(binary)")
+    return boundary, payload
 
 
 @pytest.fixture

@@ -10,6 +10,7 @@ from ._utils import (
     build_request,
     build_url,
     formatter,
+    get_request_multipart,
     httpx_client,
     respx_mock,
 )
@@ -212,7 +213,7 @@ def test_post_request_multipart_data(*, formatter: HARFormatter, respx_mock: Rou
         with httpx_client() as client:
             # httpx does not support constructing multipart requests with form data without files
             boundary = "boundary"
-            content = "\n".join([
+            content = "\r\n".join([
                 f"--{boundary}",
                 'Content-Disposition: form-data; name="id"',
                 "",
@@ -236,7 +237,7 @@ def test_post_request_multipart_data(*, formatter: HARFormatter, respx_mock: Rou
             method="POST",
             headers=[
                 {"name": "content-type", "value": f"multipart/form-data; boundary={boundary}"},
-                {"name": "content-length", "value": "130"},
+                {"name": "content-length", "value": "139"},
             ],
             postData={
                 "mimeType": f"multipart/form-data; boundary={boundary}",
@@ -245,5 +246,76 @@ def test_post_request_multipart_data(*, formatter: HARFormatter, respx_mock: Rou
                     {"name": "name", "value": "User"}
                 ],
                 "text": content,
+            }
+        )
+
+
+def test_post_request_multipart_files(*, formatter: HARFormatter, respx_mock: RouterType,
+                                      httpx_client: HTTPClientType):
+    with given:
+        respx_mock.post("/").respond(200)
+        with httpx_client() as client:
+            file_name, file_content = "file.txt", b"file content"
+            response = client.post("/", files={"file": (file_name, file_content)})
+
+    with when:
+        result = formatter.format_request(response.request)
+
+    with then:
+        boundary, content = get_request_multipart(response.request, file_content)
+        assert result == build_request(
+            method="POST",
+            headers=[
+                {"name": "content-length", "value": "182"},
+                {"name": "content-type", "value": f"multipart/form-data; boundary={boundary}"},
+            ],
+            postData={
+                "mimeType": f"multipart/form-data; boundary={boundary}",
+                "params": [
+                    {
+                        "name": "file",
+                        "value": "(binary)",
+                        "fileName": file_name,
+                        "contentType": "text/plain",
+                    }
+                ],
+                "text": content,
+            }
+        )
+
+
+def test_post_request_multipart_data_with_files(*, formatter: HARFormatter, respx_mock: RouterType,
+                                                httpx_client: HTTPClientType):
+    with given:
+        respx_mock.post("/").respond(200)
+        with httpx_client() as client:
+            data = {"id": "1", "name": "User"}
+            file_name, file_content = "file.txt", b"file content"
+            response = client.post("/", data=data, files={"file": (file_name, file_content)})
+
+    with when:
+        result = formatter.format_request(response.request)
+
+    with then:
+        boundary, content = get_request_multipart(response.request, file_content)
+        assert result == build_request(
+            method="POST",
+            headers=[
+                {"name": "content-length", "value": "355"},
+                {"name": "content-type", "value": f"multipart/form-data; boundary={boundary}"},
+            ],
+            postData={
+                "mimeType": f"multipart/form-data; boundary={boundary}",
+                "text": content,
+                "params": [
+                    {"name": "id", "value": "1"},
+                    {"name": "name", "value": "User"},
+                    {
+                        "name": "file",
+                        "value": "(binary)",
+                        "fileName": file_name,
+                        "contentType": "text/plain",
+                    }
+                ]
             }
         )

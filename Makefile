@@ -17,7 +17,7 @@ publish:
 
 .PHONY: test
 test:
-	python3 -m pytest
+	python3 -m pytest -s -vv --diff-symbols
 
 .PHONY: coverage
 coverage:

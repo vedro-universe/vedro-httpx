@@ -1,6 +1,7 @@
 from base64 import b64encode
 from email.message import Message
 from email.parser import Parser
+from email.policy import HTTP as HTTPPolicy
 from email.utils import parsedate_to_datetime
 from http.cookies import Morsel, SimpleCookie
 from typing import Any, List, Tuple, cast
@@ -82,10 +83,11 @@ class BaseHARFormatter:
 
     def _format_multipart(self, content: bytes,
                           content_type: str) -> Tuple[str, List[har.PostParam]]:
+        header = f"Content-Type: {content_type}\r\n\r\n"
         payload = content.decode("ASCII", errors="surrogateescape")
 
         post_params = []
-        multipart = self._parse_multipart(payload, content_type)
+        multipart = self._parse_multipart(f"{header}{payload}")
         for part in multipart.get_payload():
             name = part.get_param("name", header="Content-Disposition")
             value = part.get_payload(decode=True).decode()
@@ -99,17 +101,13 @@ class BaseHARFormatter:
             post_params.append(post_param)
 
         content_str = multipart.as_string()
-        header_len = content_str.find("\n\n") + 2
-        return content_str[header_len:], post_params
+        return content_str.replace(header, "", 1), post_params
 
-    def _parse_multipart(self, payload: str, content_type: str) -> Message:
-        parser = Parser()
-        message: Message = parser.parsestr(f"Content-Type: {content_type}\r\n\r\n{payload}")
-
+    def _parse_multipart(self, multipart: str) -> Message:
+        message: Message = Parser(policy=HTTPPolicy).parsestr(multipart)
         for part in message.get_payload():
             if part.get_param("filename", header="Content-Disposition"):
                 part.set_payload("(binary)")
-
         return message
 
     def _format_elapsed(self, response: httpx.Response) -> int:
