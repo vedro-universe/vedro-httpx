@@ -1,13 +1,13 @@
 from baby_steps import given, then, when
 
-from vedro_httpx.har import HARFormatter
+from vedro_httpx.har import SyncHARFormatter
 
 from ._utils import HTTPClientType, RouterType, build_response, formatter, httpx_client, respx_mock
 
 __all__ = ("formatter", "respx_mock", "httpx_client",)  # fixtures
 
 
-def test_response(*, formatter: HARFormatter, respx_mock: RouterType,
+def test_response(*, formatter: SyncHARFormatter, respx_mock: RouterType,
                   httpx_client: HTTPClientType):
     with given:
         respx_mock.get("/").respond(200)
@@ -21,7 +21,7 @@ def test_response(*, formatter: HARFormatter, respx_mock: RouterType,
         assert result == build_response()
 
 
-def test_response_with_status(*, formatter: HARFormatter, respx_mock: RouterType,
+def test_response_with_status(*, formatter: SyncHARFormatter, respx_mock: RouterType,
                               httpx_client: HTTPClientType):
     with given:
         respx_mock.get("/").respond(404)
@@ -35,7 +35,7 @@ def test_response_with_status(*, formatter: HARFormatter, respx_mock: RouterType
         assert result == build_response(status=404, statusText="Not Found")
 
 
-def test_response_with_headers(*, formatter: HARFormatter, respx_mock: RouterType,
+def test_response_with_headers(*, formatter: SyncHARFormatter, respx_mock: RouterType,
                                httpx_client: HTTPClientType):
     with given:
         respx_mock.get("/").respond(200, headers=[
@@ -55,7 +55,7 @@ def test_response_with_headers(*, formatter: HARFormatter, respx_mock: RouterTyp
         ])
 
 
-def test_response_with_redirect(*, formatter: HARFormatter, respx_mock: RouterType,
+def test_response_with_redirect(*, formatter: SyncHARFormatter, respx_mock: RouterType,
                                 httpx_client: HTTPClientType):
     with given:
         respx_mock.get("/").respond(301, headers=[
@@ -78,7 +78,7 @@ def test_response_with_redirect(*, formatter: HARFormatter, respx_mock: RouterTy
         )
 
 
-def test_response_with_cookies(*, formatter: HARFormatter, respx_mock: RouterType,
+def test_response_with_cookies(*, formatter: SyncHARFormatter, respx_mock: RouterType,
                                httpx_client: HTTPClientType):
     with given:
         cookie_attrs = ("Domain=localhost; expires=Sat, 01-Jan-2024 00:00:00 GMT; HttpOnly; "
@@ -118,7 +118,7 @@ def test_response_with_cookies(*, formatter: HARFormatter, respx_mock: RouterTyp
         )
 
 
-def test_response_with_text_content(*, formatter: HARFormatter, respx_mock: RouterType,
+def test_response_with_text_content(*, formatter: SyncHARFormatter, respx_mock: RouterType,
                                     httpx_client: HTTPClientType):
     with given:
         respx_mock.get("/").respond(200, text="text")
@@ -142,7 +142,7 @@ def test_response_with_text_content(*, formatter: HARFormatter, respx_mock: Rout
         )
 
 
-def test_response_with_json_content(*, formatter: HARFormatter, respx_mock: RouterType,
+def test_response_with_json_content(*, formatter: SyncHARFormatter, respx_mock: RouterType,
                                     httpx_client: HTTPClientType):
     with given:
         respx_mock.get("/").respond(200, json={"key": "value"})
@@ -166,7 +166,7 @@ def test_response_with_json_content(*, formatter: HARFormatter, respx_mock: Rout
         )
 
 
-def test_response_with_binary_content(*, formatter: HARFormatter, respx_mock: RouterType,
+def test_response_with_binary_content(*, formatter: SyncHARFormatter, respx_mock: RouterType,
                                       httpx_client: HTTPClientType):
     with given:
         respx_mock.get("/").respond(200, content=b"binary")
@@ -190,7 +190,7 @@ def test_response_with_binary_content(*, formatter: HARFormatter, respx_mock: Ro
         )
 
 
-def test_response_with_octet_stream_content(*, formatter: HARFormatter, respx_mock: RouterType,
+def test_response_with_octet_stream_content(*, formatter: SyncHARFormatter, respx_mock: RouterType,
                                             httpx_client: HTTPClientType):
     with given:
         respx_mock.get("/").respond(200, content=b"binary",
@@ -216,7 +216,7 @@ def test_response_with_octet_stream_content(*, formatter: HARFormatter, respx_mo
         )
 
 
-def test_stream_response(*, formatter: HARFormatter, respx_mock: RouterType,
+def test_stream_response(*, formatter: SyncHARFormatter, respx_mock: RouterType,
                          httpx_client: HTTPClientType):
     with given:
         respx_mock.get("/").respond(200, content=b"binary")

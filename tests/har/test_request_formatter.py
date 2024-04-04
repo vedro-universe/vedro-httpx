@@ -2,7 +2,7 @@ import httpx
 import pytest
 from baby_steps import given, then, when
 
-from vedro_httpx.har import HARFormatter
+from vedro_httpx.har import SyncHARFormatter
 
 from ._utils import (
     HTTPClientType,
@@ -18,7 +18,7 @@ from ._utils import (
 __all__ = ("formatter", "respx_mock", "httpx_client",)  # fixtures
 
 
-def test_get_request(*, formatter: HARFormatter, respx_mock: RouterType,
+def test_get_request(*, formatter: SyncHARFormatter, respx_mock: RouterType,
                      httpx_client: HTTPClientType):
     with given:
         respx_mock.get("/").respond(200)
@@ -33,7 +33,7 @@ def test_get_request(*, formatter: HARFormatter, respx_mock: RouterType,
 
 
 @pytest.mark.parametrize("path", ["/users", "/users#fragment"])
-def test_get_request_with_path(path: str, *, formatter: HARFormatter, respx_mock: RouterType,
+def test_get_request_with_path(path: str, *, formatter: SyncHARFormatter, respx_mock: RouterType,
                                httpx_client: HTTPClientType):
     with given:
         respx_mock.get("/users").respond(200)
@@ -47,7 +47,7 @@ def test_get_request_with_path(path: str, *, formatter: HARFormatter, respx_mock
         assert result == build_request(url=build_url("/users"))
 
 
-def test_get_request_with_params(*, formatter: HARFormatter, respx_mock: RouterType,
+def test_get_request_with_params(*, formatter: SyncHARFormatter, respx_mock: RouterType,
                                  httpx_client: HTTPClientType):
     with given:
         respx_mock.get("/").respond(200)
@@ -68,7 +68,7 @@ def test_get_request_with_params(*, formatter: HARFormatter, respx_mock: RouterT
         )
 
 
-def test_get_request_with_headers(*, formatter: HARFormatter, respx_mock: RouterType,
+def test_get_request_with_headers(*, formatter: SyncHARFormatter, respx_mock: RouterType,
                                   httpx_client: HTTPClientType):
     with given:
         respx_mock.get("/").respond(200)
@@ -86,7 +86,7 @@ def test_get_request_with_headers(*, formatter: HARFormatter, respx_mock: Router
         ])
 
 
-def test_get_request_with_cookies(*, formatter: HARFormatter, respx_mock: RouterType,
+def test_get_request_with_cookies(*, formatter: SyncHARFormatter, respx_mock: RouterType,
                                   httpx_client: HTTPClientType):
     with given:
         respx_mock.get("/").respond(200)
@@ -111,7 +111,7 @@ def test_get_request_with_cookies(*, formatter: HARFormatter, respx_mock: Router
             ])
 
 
-def test_post_request_no_data(*, formatter: HARFormatter, respx_mock: RouterType,
+def test_post_request_no_data(*, formatter: SyncHARFormatter, respx_mock: RouterType,
                               httpx_client: HTTPClientType):
     with given:
         respx_mock.post("/").respond(200)
@@ -128,7 +128,7 @@ def test_post_request_no_data(*, formatter: HARFormatter, respx_mock: RouterType
         assert result == expected_result
 
 
-def test_post_request_json_data(*, formatter: HARFormatter, respx_mock: RouterType,
+def test_post_request_json_data(*, formatter: SyncHARFormatter, respx_mock: RouterType,
                                 httpx_client: HTTPClientType):
     with given:
         respx_mock.post("/").respond(200)
@@ -152,7 +152,7 @@ def test_post_request_json_data(*, formatter: HARFormatter, respx_mock: RouterTy
         )
 
 
-def test_post_request_binary_data(*, formatter: HARFormatter, respx_mock: RouterType,
+def test_post_request_binary_data(*, formatter: SyncHARFormatter, respx_mock: RouterType,
                                   httpx_client: HTTPClientType):
     with given:
         respx_mock.post("/").respond(200)
@@ -178,7 +178,7 @@ def test_post_request_binary_data(*, formatter: HARFormatter, respx_mock: Router
         )
 
 
-def test_post_request_form_data(*, formatter: HARFormatter, respx_mock: RouterType,
+def test_post_request_form_data(*, formatter: SyncHARFormatter, respx_mock: RouterType,
                                 httpx_client: HTTPClientType):
     with given:
         respx_mock.post("/").respond(200)
@@ -206,7 +206,7 @@ def test_post_request_form_data(*, formatter: HARFormatter, respx_mock: RouterTy
         )
 
 
-def test_post_request_multipart_data(*, formatter: HARFormatter, respx_mock: RouterType,
+def test_post_request_multipart_data(*, formatter: SyncHARFormatter, respx_mock: RouterType,
                                      httpx_client: HTTPClientType):
     with given:
         respx_mock.post("/").respond(200)
@@ -250,7 +250,7 @@ def test_post_request_multipart_data(*, formatter: HARFormatter, respx_mock: Rou
         )
 
 
-def test_post_request_multipart_files(*, formatter: HARFormatter, respx_mock: RouterType,
+def test_post_request_multipart_files(*, formatter: SyncHARFormatter, respx_mock: RouterType,
                                       httpx_client: HTTPClientType):
     with given:
         respx_mock.post("/").respond(200)
@@ -284,7 +284,8 @@ def test_post_request_multipart_files(*, formatter: HARFormatter, respx_mock: Ro
         )
 
 
-def test_post_request_multipart_data_with_files(*, formatter: HARFormatter, respx_mock: RouterType,
+def test_post_request_multipart_data_with_files(*, formatter: SyncHARFormatter,
+                                                respx_mock: RouterType,
                                                 httpx_client: HTTPClientType):
     with given:
         respx_mock.post("/").respond(200)

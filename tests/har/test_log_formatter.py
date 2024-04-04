@@ -1,7 +1,7 @@
 from baby_steps import given, then, when
 
 from vedro_httpx import __version__ as version
-from vedro_httpx.har import HARFormatter
+from vedro_httpx.har import SyncHARFormatter
 
 from ._utils import (
     HTTPClientType,
@@ -16,7 +16,7 @@ from ._utils import (
 __all__ = ("formatter", "respx_mock", "httpx_client",)  # fixtures
 
 
-def test_format_responses(*, formatter: HARFormatter, respx_mock: RouterType,
+def test_format_responses(*, formatter: SyncHARFormatter, respx_mock: RouterType,
                           httpx_client: HTTPClientType):
     with given:
         respx_mock.get("/").respond(200)
@@ -46,5 +46,6 @@ def test_format_responses(*, formatter: HARFormatter, respx_mock: RouterType,
                         "receive": 0,
                     }
                 }
-            ]
+            ],
+            "pages": [],
         }

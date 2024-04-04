@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, Dict, Optional, Union, cast
 
 import vedro
@@ -15,6 +16,7 @@ from httpx._types import (
     TimeoutTypes,
 )
 
+from ._request_recorder import AsyncRequestRecorder, async_request_recorder
 from ._response import Response
 
 __all__ = ("AsyncHTTPInterface", "AsyncClient",)
@@ -25,7 +27,10 @@ RequestData = Dict[Any, Any]
 
 class AsyncClient(_AsyncClient):
     async def _send_single_request(self, request: Request) -> Response:
+        request.extensions["vedro_httpx_started_at"] = datetime.now()
+
         response = await super()._send_single_request(request)
+
         return Response(
             status_code=response.status_code,
             headers=response.headers,
@@ -38,13 +43,17 @@ class AsyncClient(_AsyncClient):
 
 
 class AsyncHTTPInterface(vedro.Interface):
-    def __init__(self, base_url: Union[URL, str] = "") -> None:
+    def __init__(self, base_url: Union[URL, str] = "", *,
+                 request_recorder: AsyncRequestRecorder = async_request_recorder) -> None:
         super().__init__()
         self._base_url = base_url
+        self._request_recorder = request_recorder
 
     # Docs https://www.python-httpx.org/api/#asyncclient
     def _client(self, **kwargs: Any) -> AsyncClient:
-        return AsyncClient(**kwargs)
+        client = AsyncClient(**kwargs)
+        client.event_hooks["response"].append(self._request_recorder.record)
+        return client
 
     # Arguments are duplicated to provide auto-completion
     async def _request(self,

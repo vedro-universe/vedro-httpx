@@ -15,6 +15,7 @@ from httpx._types import (
     TimeoutTypes,
 )
 
+from ._request_recorder import SyncRequestRecorder, sync_request_recorder
 from ._response import Response
 
 __all__ = ("SyncHTTPInterface", "SyncClient",)
@@ -37,13 +38,17 @@ class SyncClient(_SyncClient):
 
 
 class SyncHTTPInterface(vedro.Interface):
-    def __init__(self, base_url: Union[URL, str] = "") -> None:
+    def __init__(self, base_url: Union[URL, str] = "", *,
+                 request_recorder: SyncRequestRecorder = sync_request_recorder) -> None:
         super().__init__()
         self._base_url = base_url
+        self._request_recorder = request_recorder
 
     # Docs https://www.python-httpx.org/api/#client
     def _client(self, **kwargs: Any) -> SyncClient:
-        return SyncClient(**kwargs)
+        client = SyncClient(**kwargs)
+        client.event_hooks["response"].append(self._request_recorder.record)
+        return client
 
     # Arguments are duplicated to provide auto-completion
     def _request(self,

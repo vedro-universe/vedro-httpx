@@ -5,12 +5,23 @@ import vedro_httpx.har._types as har
 __all__ = ("HARBuilder",)
 
 
+from typing import TypedDict
+
+
+class HAR(TypedDict):
+    log: har.Log
+
+
 class HARBuilder:
+    def build_har(self, log: har.Log) -> HAR:
+        return {"log": log}
+
     def build_log(self, creator: har.Creator, entries: List[har.Entry]) -> har.Log:
         log: har.Log = {
             "version": "1.2",
             "creator": creator,
             "entries": entries,
+            "pages": [],  # required for some dev tools
         }
         return log
 
