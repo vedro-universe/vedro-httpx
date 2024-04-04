@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from baby_steps import given, then, when
 
 from vedro_httpx import __version__ as version
@@ -23,6 +25,9 @@ def test_format_responses(*, formatter: SyncHARFormatter, respx_mock: RouterType
         with httpx_client() as client:
             response = client.get("/")
 
+        now = datetime.now()
+        response.request.extensions["vedro_httpx_started_at"] = now
+
     with when:
         result = formatter.format([response])
 
@@ -35,7 +40,7 @@ def test_format_responses(*, formatter: SyncHARFormatter, respx_mock: RouterType
             },
             "entries": [
                 {
-                    "startedDateTime": "2021-01-01T00:00:00.000Z",
+                    "startedDateTime": now.isoformat(),
                     "time": 0,
                     "request": build_request(),
                     "response": build_response(),

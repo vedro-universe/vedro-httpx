@@ -1,4 +1,5 @@
 from base64 import b64encode
+from datetime import datetime
 from email.message import Message
 from email.parser import Parser
 from email.policy import HTTP as HTTPPolicy
@@ -152,3 +153,7 @@ class BaseHARFormatter:
 
     def _get_content_type(self, headers: httpx.Headers) -> str:
         return cast(str, headers.get("Content-Type", "x-unknown"))
+
+    def _get_request_started_at(self, request: httpx.Request) -> str:
+        started_at = request.extensions.get("vedro_httpx_started_at", datetime.now())
+        return cast(datetime, started_at).isoformat()
