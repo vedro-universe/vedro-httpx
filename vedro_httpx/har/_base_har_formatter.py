@@ -72,13 +72,13 @@ class BaseHARFormatter:
             return self._builder.build_post_data(content_type, text, params)
 
         if self._is_text_content(content_type):
-            text = content.decode()
+            text = self._decode(content)
             return self._builder.build_post_data(content_type, text)
 
         return self._builder.build_post_data(content_type, "binary")
 
     def _format_url_encoded(self, content: bytes) -> Tuple[str, List[har.PostParam]]:
-        payload = content.decode()
+        payload = self._decode(content)
         try:
             parsed = parse_qsl(payload)
         except Exception:
@@ -89,13 +89,13 @@ class BaseHARFormatter:
     def _format_multipart(self, content: bytes,
                           content_type: str) -> Tuple[str, List[har.PostParam]]:
         header = f"Content-Type: {content_type}\r\n\r\n"
-        payload = content.decode("ASCII", errors="surrogateescape")
+        payload = self._decode(content)
 
         post_params = []
         multipart = self._parse_multipart(f"{header}{payload}")
         for part in multipart.get_payload():
             name = part.get_param("name", header="Content-Disposition")
-            value = part.get_payload(decode=True).decode()
+            value = self._decode(part.get_payload(decode=True))
             filename = part.get_param("filename", header="Content-Disposition")
 
             if filename:
@@ -128,12 +128,18 @@ class BaseHARFormatter:
             return self._builder.build_response_content(content_type, size)
 
         if self._is_text_content(content_type):
-            text = content.decode()
+            text = self._decode(content)
             return self._builder.build_response_content(content_type, size, text)
         else:
             text = b64encode(content).decode()
             return self._builder.build_response_content(content_type, size, text,
                                                         encoding="base64")
+
+    def _decode(self, value: bytes, encoding: str = "utf-8") -> str:
+        try:
+            return value.decode(encoding)
+        except UnicodeDecodeError:
+            return value.decode(encoding, errors="surrogateescape")
 
     def _is_text_content(self, content_type: str) -> bool:
         return (
