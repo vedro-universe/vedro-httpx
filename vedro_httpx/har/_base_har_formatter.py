@@ -10,6 +10,7 @@ from urllib.parse import parse_qsl
 import httpx
 
 import vedro_httpx.har._types as har
+from vedro_httpx._version import version as vedro_httpx_version
 
 from ._har_builder import HARBuilder
 
@@ -18,7 +19,7 @@ __all__ = ("BaseHARFormatter",)
 
 class BaseHARFormatter:
     def __init__(self, creator_name: str = "vedro-httpx",
-                 creator_version: str = "0.3.0") -> None:
+                 creator_version: str = vedro_httpx_version) -> None:
         self._builder = HARBuilder()
         self._creator_name = creator_name
         self._creator_version = creator_version

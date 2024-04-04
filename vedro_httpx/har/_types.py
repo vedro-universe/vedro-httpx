@@ -359,3 +359,8 @@ class Log(TypedDict):
 
     # A comment provided by the user or the application.
     comment: NotRequired[str]
+
+
+class HAR(TypedDict):
+    # Container for all logging information.
+    log: Log

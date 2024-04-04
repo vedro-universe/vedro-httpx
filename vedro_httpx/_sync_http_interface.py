@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, Dict, Optional, Union, cast
 
 import vedro
@@ -25,6 +26,8 @@ RequestData = Dict[Any, Any]
 
 class SyncClient(_SyncClient):
     def _send_single_request(self, request: Request) -> Response:
+        request.extensions["vedro_httpx_started_at"] = datetime.now()
+
         response = super()._send_single_request(request)
         return Response(
             status_code=response.status_code,
