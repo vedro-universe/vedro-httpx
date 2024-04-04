@@ -12,6 +12,7 @@ import httpx
 
 import vedro_httpx.har._types as har
 from vedro_httpx._version import version as vedro_httpx_version
+
 from ._har_builder import HARBuilder
 
 __all__ = ("BaseHARFormatter",)
