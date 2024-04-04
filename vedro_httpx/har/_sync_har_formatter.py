@@ -25,7 +25,7 @@ class SyncHARFormatter(BaseHARFormatter):
         # httpx does not provide the HTTP version of the request
         formatted_request = self.format_request(request, http_version=response.http_version)
 
-        started_at = self._get_request_started_at(request)
+        started_at = self._format_request_started_at(request)
         time = self._format_elapsed(response)
         return self._builder.build_entry(formatted_request, formatted_response, started_at, time)
 

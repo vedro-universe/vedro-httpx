@@ -21,6 +21,20 @@ def test_response(*, formatter: SyncHARFormatter, respx_mock: RouterType,
         assert result == build_response()
 
 
+def test_response_version(*, formatter: SyncHARFormatter, respx_mock: RouterType,
+                          httpx_client: HTTPClientType):
+    with given:
+        respx_mock.get("/").respond(200, http_version="HTTP/2")
+        with httpx_client() as client:
+            response = client.get("/")
+
+    with when:
+        result = formatter.format_response(response)
+
+    with then:
+        assert result == build_response(httpVersion="HTTP/2")
+
+
 def test_response_with_status(*, formatter: SyncHARFormatter, respx_mock: RouterType,
                               httpx_client: HTTPClientType):
     with given:

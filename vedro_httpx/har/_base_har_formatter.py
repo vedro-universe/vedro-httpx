@@ -12,7 +12,6 @@ import httpx
 
 import vedro_httpx.har._types as har
 from vedro_httpx._version import version as vedro_httpx_version
-
 from ._har_builder import HARBuilder
 
 __all__ = ("BaseHARFormatter",)
@@ -119,7 +118,7 @@ class BaseHARFormatter:
         try:
             elapsed = response.elapsed
         except RuntimeError:
-            return 0
+            elapsed = datetime.now() - self._get_request_started_at(response.request)
         return int(elapsed.total_seconds() * 1000)
 
     def _format_response_content(self, content: bytes, content_type: str) -> har.Content:
@@ -154,6 +153,9 @@ class BaseHARFormatter:
     def _get_content_type(self, headers: httpx.Headers) -> str:
         return cast(str, headers.get("Content-Type", "x-unknown"))
 
-    def _get_request_started_at(self, request: httpx.Request) -> str:
+    def _get_request_started_at(self, request: httpx.Request) -> datetime:
         started_at = request.extensions.get("vedro_httpx_started_at", datetime.now())
-        return cast(datetime, started_at).isoformat()
+        return cast(datetime, started_at)
+
+    def _format_request_started_at(self, request: httpx.Request) -> str:
+        return self._get_request_started_at(request).isoformat()
