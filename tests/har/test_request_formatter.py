@@ -10,54 +10,54 @@ from ._utils import (
     build_request,
     build_url,
     builder,
-    formatter,
     get_request_multipart,
-    httpx_client,
     respx_mock,
+    sync_formatter,
+    sync_httpx_client,
 )
 
-__all__ = ("formatter", "builder", "respx_mock", "httpx_client",)  # fixtures
+__all__ = ("sync_formatter", "builder", "respx_mock", "sync_httpx_client",)  # fixtures
 
 
-def test_get_request(*, formatter: SyncHARFormatter, respx_mock: RouterType,
-                     httpx_client: HTTPClientType):
+def test_get_request(*, sync_formatter: SyncHARFormatter, respx_mock: RouterType,
+                     sync_httpx_client: HTTPClientType):
     with given:
         respx_mock.get("/").respond(200)
-        with httpx_client() as client:
+        with sync_httpx_client() as client:
             response = client.get("/")
 
     with when:
-        result = formatter.format_request(response.request)
+        result = sync_formatter.format_request(response.request)
 
     with then:
         assert result == build_request()
 
 
 @pytest.mark.parametrize("path", ["/users", "/users#fragment"])
-def test_get_request_with_path(path: str, *, formatter: SyncHARFormatter, respx_mock: RouterType,
-                               httpx_client: HTTPClientType):
+def test_get_request_with_path(path: str, *, sync_formatter: SyncHARFormatter,
+                               respx_mock: RouterType, sync_httpx_client: HTTPClientType):
     with given:
         respx_mock.get("/users").respond(200)
-        with httpx_client() as client:
+        with sync_httpx_client() as client:
             response = client.get(path)
 
     with when:
-        result = formatter.format_request(response.request)
+        result = sync_formatter.format_request(response.request)
 
     with then:
         assert result == build_request(url=build_url("/users"))
 
 
-def test_get_request_with_params(*, formatter: SyncHARFormatter, respx_mock: RouterType,
-                                 httpx_client: HTTPClientType):
+def test_get_request_with_params(*, sync_formatter: SyncHARFormatter, respx_mock: RouterType,
+                                 sync_httpx_client: HTTPClientType):
     with given:
         respx_mock.get("/").respond(200)
-        with httpx_client() as client:
+        with sync_httpx_client() as client:
             params = httpx.QueryParams([("id", 1), ("id", 2)])
             response = client.get("/", params=params)
 
     with when:
-        result = formatter.format_request(response.request)
+        result = sync_formatter.format_request(response.request)
 
     with then:
         assert result == build_request(
@@ -69,16 +69,16 @@ def test_get_request_with_params(*, formatter: SyncHARFormatter, respx_mock: Rou
         )
 
 
-def test_get_request_with_headers(*, formatter: SyncHARFormatter, respx_mock: RouterType,
-                                  httpx_client: HTTPClientType):
+def test_get_request_with_headers(*, sync_formatter: SyncHARFormatter, respx_mock: RouterType,
+                                  sync_httpx_client: HTTPClientType):
     with given:
         respx_mock.get("/").respond(200)
-        with httpx_client() as client:
+        with sync_httpx_client() as client:
             headers = httpx.Headers([("x-header", "value1"), ("x-header", "value2")])
             response = client.get("/", headers=headers)
 
     with when:
-        result = formatter.format_request(response.request)
+        result = sync_formatter.format_request(response.request)
 
     with then:
         assert result == build_request(headers=[
@@ -87,19 +87,19 @@ def test_get_request_with_headers(*, formatter: SyncHARFormatter, respx_mock: Ro
         ])
 
 
-def test_get_request_with_cookies(*, formatter: SyncHARFormatter, respx_mock: RouterType,
-                                  httpx_client: HTTPClientType):
+def test_get_request_with_cookies(*, sync_formatter: SyncHARFormatter, respx_mock: RouterType,
+                                  sync_httpx_client: HTTPClientType):
     with given:
         respx_mock.get("/").respond(200)
 
         cookies = httpx.Cookies({"cookie1": "value1", "cookie2": "value2"})
-        with httpx_client(cookies=cookies) as client:
+        with sync_httpx_client(cookies=cookies) as client:
             # Setting per-request cookies=<...> is being deprecated,
             # because the expected behaviour on cookie persistence is ambiguous
             response = client.get("/")
 
     with when:
-        result = formatter.format_request(response.request)
+        result = sync_formatter.format_request(response.request)
 
     with then:
         assert result == build_request(
@@ -112,15 +112,15 @@ def test_get_request_with_cookies(*, formatter: SyncHARFormatter, respx_mock: Ro
             ])
 
 
-def test_post_request_no_data(*, formatter: SyncHARFormatter, respx_mock: RouterType,
-                              httpx_client: HTTPClientType):
+def test_post_request_no_data(*, sync_formatter: SyncHARFormatter, respx_mock: RouterType,
+                              sync_httpx_client: HTTPClientType):
     with given:
         respx_mock.post("/").respond(200)
-        with httpx_client() as client:
+        with sync_httpx_client() as client:
             response = client.post("/")
 
     with when:
-        result = formatter.format_request(response.request)
+        result = sync_formatter.format_request(response.request)
 
     with then:
         expected_result = build_request(method="POST")
@@ -129,15 +129,15 @@ def test_post_request_no_data(*, formatter: SyncHARFormatter, respx_mock: Router
         assert result == expected_result
 
 
-def test_post_request_json_data(*, formatter: SyncHARFormatter, respx_mock: RouterType,
-                                httpx_client: HTTPClientType):
+def test_post_request_json_data(*, sync_formatter: SyncHARFormatter, respx_mock: RouterType,
+                                sync_httpx_client: HTTPClientType):
     with given:
         respx_mock.post("/").respond(200)
-        with httpx_client() as client:
+        with sync_httpx_client() as client:
             response = client.post("/", json={"id": 1, "name": "User"})
 
     with when:
-        result = formatter.format_request(response.request)
+        result = sync_formatter.format_request(response.request)
 
     with then:
         assert result == build_request(
@@ -153,17 +153,17 @@ def test_post_request_json_data(*, formatter: SyncHARFormatter, respx_mock: Rout
         )
 
 
-def test_post_request_binary_data(*, formatter: SyncHARFormatter, respx_mock: RouterType,
-                                  httpx_client: HTTPClientType):
+def test_post_request_binary_data(*, sync_formatter: SyncHARFormatter, respx_mock: RouterType,
+                                  sync_httpx_client: HTTPClientType):
     with given:
         respx_mock.post("/").respond(200)
-        with httpx_client() as client:
+        with sync_httpx_client() as client:
             response = client.post("/", content=b"binary", headers={
                 "content-type": "application/octet-stream"
             })
 
     with when:
-        result = formatter.format_request(response.request)
+        result = sync_formatter.format_request(response.request)
 
     with then:
         assert result == build_request(
@@ -179,15 +179,15 @@ def test_post_request_binary_data(*, formatter: SyncHARFormatter, respx_mock: Ro
         )
 
 
-def test_post_request_form_data(*, formatter: SyncHARFormatter, respx_mock: RouterType,
-                                httpx_client: HTTPClientType):
+def test_post_request_form_data(*, sync_formatter: SyncHARFormatter, respx_mock: RouterType,
+                                sync_httpx_client: HTTPClientType):
     with given:
         respx_mock.post("/").respond(200)
-        with httpx_client() as client:
+        with sync_httpx_client() as client:
             response = client.post("/", data={"id": "1", "name": "User"})
 
     with when:
-        result = formatter.format_request(response.request)
+        result = sync_formatter.format_request(response.request)
 
     with then:
         assert result == build_request(
@@ -207,11 +207,11 @@ def test_post_request_form_data(*, formatter: SyncHARFormatter, respx_mock: Rout
         )
 
 
-def test_post_request_multipart_data(*, formatter: SyncHARFormatter, respx_mock: RouterType,
-                                     httpx_client: HTTPClientType):
+def test_post_request_multipart_data(*, sync_formatter: SyncHARFormatter, respx_mock: RouterType,
+                                     sync_httpx_client: HTTPClientType):
     with given:
         respx_mock.post("/").respond(200)
-        with httpx_client() as client:
+        with sync_httpx_client() as client:
             # httpx does not support constructing multipart requests with form data without files
             boundary = "boundary"
             content = "\r\n".join([
@@ -231,7 +231,7 @@ def test_post_request_multipart_data(*, formatter: SyncHARFormatter, respx_mock:
             })
 
     with when:
-        result = formatter.format_request(response.request)
+        result = sync_formatter.format_request(response.request)
 
     with then:
         assert result == build_request(
@@ -251,16 +251,16 @@ def test_post_request_multipart_data(*, formatter: SyncHARFormatter, respx_mock:
         )
 
 
-def test_post_request_multipart_files(*, formatter: SyncHARFormatter, respx_mock: RouterType,
-                                      httpx_client: HTTPClientType):
+def test_post_request_multipart_files(*, sync_formatter: SyncHARFormatter, respx_mock: RouterType,
+                                      sync_httpx_client: HTTPClientType):
     with given:
         respx_mock.post("/").respond(200)
-        with httpx_client() as client:
+        with sync_httpx_client() as client:
             file_name, file_content = "file.txt", b"file content"
             response = client.post("/", files={"file": (file_name, file_content)})
 
     with when:
-        result = formatter.format_request(response.request)
+        result = sync_formatter.format_request(response.request)
 
     with then:
         boundary, content = get_request_multipart(response.request, file_content)
@@ -285,18 +285,18 @@ def test_post_request_multipart_files(*, formatter: SyncHARFormatter, respx_mock
         )
 
 
-def test_post_request_multipart_data_with_files(*, formatter: SyncHARFormatter,
+def test_post_request_multipart_data_with_files(*, sync_formatter: SyncHARFormatter,
                                                 respx_mock: RouterType,
-                                                httpx_client: HTTPClientType):
+                                                sync_httpx_client: HTTPClientType):
     with given:
         respx_mock.post("/").respond(200)
-        with httpx_client() as client:
+        with sync_httpx_client() as client:
             data = {"id": "1", "name": "User"}
             file_name, file_content = "file.txt", b"file content"
             response = client.post("/", data=data, files={"file": (file_name, file_content)})
 
     with when:
-        result = formatter.format_request(response.request)
+        result = sync_formatter.format_request(response.request)
 
     with then:
         boundary, content = get_request_multipart(response.request, file_content)

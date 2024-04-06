@@ -10,8 +10,9 @@ from vedro_httpx.har import Request as RequestType
 from vedro_httpx.har import Response as ResponseType
 from vedro_httpx.har import SyncHARFormatter
 
-__all__ = ("formatter", "builder", "respx_mock", "httpx_client", "build_url", "build_request",
-           "build_response", "get_request_multipart", "HTTPClientType", "RouterType")
+__all__ = ("sync_formatter", "builder", "respx_mock", "sync_httpx_client",
+           "build_url", "build_request", "build_response", "get_request_multipart",
+           "HTTPClientType", "RouterType")
 
 
 HTTPClientType = Callable[..., httpx.Client]
@@ -88,7 +89,7 @@ def builder() -> HARBuilder:
 
 
 @pytest.fixture
-def formatter(builder: HARBuilder) -> SyncHARFormatter:
+def sync_formatter(builder: HARBuilder) -> SyncHARFormatter:
     return SyncHARFormatter(builder)
 
 
@@ -98,6 +99,6 @@ def respx_mock() -> RouterType:
 
 
 @pytest.fixture()
-def httpx_client(respx_mock: RouterType) -> HTTPClientType:
+def sync_httpx_client(respx_mock: RouterType) -> HTTPClientType:
     mock_transport = httpx.MockTransport(respx_mock.handler)
     return lambda **kwargs: httpx.Client(transport=mock_transport, base_url=build_url(), **kwargs)

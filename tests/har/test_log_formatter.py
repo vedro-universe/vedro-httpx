@@ -11,26 +11,26 @@ from ._utils import (
     build_request,
     build_response,
     builder,
-    formatter,
-    httpx_client,
     respx_mock,
+    sync_formatter,
+    sync_httpx_client,
 )
 
-__all__ = ("formatter", "builder", "respx_mock", "httpx_client",)  # fixtures
+__all__ = ("sync_formatter", "builder", "respx_mock", "sync_httpx_client",)  # fixtures
 
 
-def test_format_responses(*, formatter: SyncHARFormatter, respx_mock: RouterType,
-                          httpx_client: HTTPClientType):
+def test_format_responses(*, sync_formatter: SyncHARFormatter, respx_mock: RouterType,
+                          sync_httpx_client: HTTPClientType):
     with given:
         respx_mock.get("/").respond(200)
-        with httpx_client() as client:
+        with sync_httpx_client() as client:
             response = client.get("/")
 
         now = datetime.now()
         response.request.extensions["vedro_httpx_started_at"] = now
 
     with when:
-        result = formatter.format([response])
+        result = sync_formatter.format([response])
 
     with then:
         assert result == {
