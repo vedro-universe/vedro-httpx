@@ -1,5 +1,6 @@
 from ._async_har_formatter import AsyncHARFormatter
 from ._base_har_formatter import BaseHARFormatter
+from ._har_builder import HARBuilder
 from ._sync_har_formatter import SyncHARFormatter
 from ._types import (
     Browser,
@@ -21,7 +22,7 @@ from ._types import (
     Timings,
 )
 
-__all__ = ("SyncHARFormatter", "AsyncHARFormatter", "BaseHARFormatter",
+__all__ = ("SyncHARFormatter", "AsyncHARFormatter", "BaseHARFormatter", "HARBuilder",
            "Creator", "Browser", "PageTimings", "Page", "Cookie", "Header", "QueryParam",
            "PostParam", "PostData", "Content", "Request", "Response", "CacheState", "Cache",
            "Timings", "Entry", "Log")

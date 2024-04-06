@@ -6,13 +6,17 @@ __all__ = ("HARBuilder",)
 
 
 class HARBuilder:
+    def __init__(self, creator_name: str, creator_version: str) -> None:
+        self._creator_name = creator_name
+        self._creator_version = creator_version
+
     def build_har(self, log: har.Log) -> har.HAR:
         return {"log": log}
 
-    def build_log(self, creator: har.Creator, entries: List[har.Entry]) -> har.Log:
+    def build_log(self, entries: List[har.Entry]) -> har.Log:
         log: har.Log = {
             "version": "1.2",
-            "creator": creator,
+            "creator": self.build_creator(self._creator_name, self._creator_version),
             "entries": entries,
             "pages": [],  # required for some dev tools
         }

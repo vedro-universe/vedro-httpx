@@ -11,7 +11,6 @@ from urllib.parse import parse_qsl
 import httpx
 
 import vedro_httpx.har._types as har
-from vedro_httpx._version import version as vedro_httpx_version
 
 from ._har_builder import HARBuilder
 
@@ -19,15 +18,8 @@ __all__ = ("BaseHARFormatter",)
 
 
 class BaseHARFormatter:
-    def __init__(self, creator_name: str = "vedro-httpx",
-                 creator_version: str = vedro_httpx_version) -> None:
-        self._builder = HARBuilder()
-        self._creator_name = creator_name
-        self._creator_version = creator_version
-
-    @property
-    def builder(self) -> HARBuilder:
-        return self._builder
+    def __init__(self, har_builder: HARBuilder) -> None:
+        self._builder = har_builder
 
     def _format_cookies(self, headers: List[str]) -> List[har.Cookie]:
         cookies = []

@@ -4,13 +4,14 @@ import httpx
 import pytest
 import respx
 
+from vedro_httpx.har import HARBuilder
 from vedro_httpx.har import Header as HeaderType
 from vedro_httpx.har import Request as RequestType
 from vedro_httpx.har import Response as ResponseType
 from vedro_httpx.har import SyncHARFormatter
 
-__all__ = ("formatter", "respx_mock", "httpx_client", "build_url", "build_request",
-           "build_response", "HTTPClientType", "RouterType")
+__all__ = ("formatter", "builder", "respx_mock", "httpx_client", "build_url", "build_request",
+           "build_response", "get_request_multipart", "HTTPClientType", "RouterType")
 
 
 HTTPClientType = Callable[..., httpx.Client]
@@ -81,8 +82,14 @@ def get_request_multipart(request: httpx.Request,
 
 
 @pytest.fixture
-def formatter() -> SyncHARFormatter:
-    return SyncHARFormatter()
+def builder() -> HARBuilder:
+    from vedro_httpx import __version__ as version
+    return HARBuilder("vedro-httpx", version)
+
+
+@pytest.fixture
+def formatter(builder: HARBuilder) -> SyncHARFormatter:
+    return SyncHARFormatter(builder)
 
 
 @pytest.fixture()

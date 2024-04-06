@@ -10,12 +10,13 @@ from ._utils import (
     RouterType,
     build_request,
     build_response,
+    builder,
     formatter,
     httpx_client,
     respx_mock,
 )
 
-__all__ = ("formatter", "respx_mock", "httpx_client",)  # fixtures
+__all__ = ("formatter", "builder", "respx_mock", "httpx_client",)  # fixtures
 
 
 def test_format_responses(*, formatter: SyncHARFormatter, respx_mock: RouterType,

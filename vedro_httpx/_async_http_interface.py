@@ -15,7 +15,8 @@ from httpx._types import (
     TimeoutTypes,
 )
 
-from ._request_recorder import AsyncRequestRecorder, async_request_recorder
+from ._request_recorder import RequestRecorder
+from ._request_recorder import request_recorder as default_request_recorder
 from ._response import Response
 
 __all__ = ("AsyncHTTPInterface", "AsyncClient",)
@@ -43,7 +44,7 @@ class AsyncClient(_AsyncClient):
 
 class AsyncHTTPInterface(vedro.Interface):
     def __init__(self, base_url: Union[URL, str] = "", *,
-                 request_recorder: AsyncRequestRecorder = async_request_recorder) -> None:
+                 request_recorder: RequestRecorder = default_request_recorder) -> None:
         super().__init__()
         self._base_url = base_url
         self._request_recorder = request_recorder
@@ -51,7 +52,7 @@ class AsyncHTTPInterface(vedro.Interface):
     # Docs https://www.python-httpx.org/api/#asyncclient
     def _client(self, **kwargs: Any) -> AsyncClient:
         client = AsyncClient(**kwargs)
-        client.event_hooks["response"].append(self._request_recorder.record)
+        client.event_hooks["response"].append(self._request_recorder.async_record)
         return client
 
     # Arguments are duplicated to provide auto-completion

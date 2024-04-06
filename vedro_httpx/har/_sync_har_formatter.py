@@ -11,14 +11,12 @@ __all__ = ("SyncHARFormatter",)
 
 class SyncHARFormatter(BaseHARFormatter):
     def format(self, responses: List[httpx.Response]) -> har.Log:
-        creator = self._builder.build_creator(self._creator_name, self._creator_version)
-
         entries = []
         for response in responses:
             entry = self.format_entry(response, response.request)
             entries.append(entry)
 
-        return self._builder.build_log(creator, entries)
+        return self._builder.build_log(entries)
 
     def format_entry(self, response: httpx.Response, request: httpx.Request) -> har.Entry:
         formatted_response = self.format_response(response)
