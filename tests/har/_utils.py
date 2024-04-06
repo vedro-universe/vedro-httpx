@@ -4,18 +4,19 @@ import httpx
 import pytest
 import respx
 
-from vedro_httpx.har import HARBuilder
+from vedro_httpx.har import AsyncHARFormatter, HARBuilder
 from vedro_httpx.har import Header as HeaderType
 from vedro_httpx.har import Request as RequestType
 from vedro_httpx.har import Response as ResponseType
 from vedro_httpx.har import SyncHARFormatter
 
-__all__ = ("sync_formatter", "builder", "respx_mock", "sync_httpx_client",
-           "build_url", "build_request", "build_response", "get_request_multipart",
-           "HTTPClientType", "RouterType")
+__all__ = ("sync_formatter", "async_formatter", "sync_httpx_client", "async_httpx_client",
+           "builder", "respx_mock", "build_url", "build_request", "build_response",
+           "get_request_multipart", "HTTPClientType", "AsyncHTTPClientType", "RouterType")
 
 
 HTTPClientType = Callable[..., httpx.Client]
+AsyncHTTPClientType = Callable[..., httpx.AsyncClient]
 RouterType = respx.Router
 
 
@@ -93,6 +94,11 @@ def sync_formatter(builder: HARBuilder) -> SyncHARFormatter:
     return SyncHARFormatter(builder)
 
 
+@pytest.fixture
+def async_formatter(builder: HARBuilder) -> AsyncHARFormatter:
+    return AsyncHARFormatter(builder)
+
+
 @pytest.fixture()
 def respx_mock() -> RouterType:
     return respx.Router(assert_all_mocked=True, base_url=build_url())
@@ -102,3 +108,10 @@ def respx_mock() -> RouterType:
 def sync_httpx_client(respx_mock: RouterType) -> HTTPClientType:
     mock_transport = httpx.MockTransport(respx_mock.handler)
     return lambda **kwargs: httpx.Client(transport=mock_transport, base_url=build_url(), **kwargs)
+
+
+@pytest.fixture()
+def async_httpx_client(respx_mock: RouterType) -> AsyncHTTPClientType:
+    mock_transport = httpx.MockTransport(respx_mock.async_handler)
+    return lambda **kwargs: httpx.AsyncClient(transport=mock_transport,
+                                              base_url=build_url(), **kwargs)
