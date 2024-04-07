@@ -21,7 +21,7 @@ class VedroHTTPXPlugin(Plugin):
                  request_recorder: RequestRecorder = default_request_recorder) -> None:
         super().__init__(config)
         self._request_recorder = request_recorder
-        self._save_requests = False
+        self._record_requests = config.record_requests
         self._requests_artifact_name = config.requests_artifact_name
 
     def subscribe(self, dispatcher: Dispatcher) -> None:
@@ -33,21 +33,21 @@ class VedroHTTPXPlugin(Plugin):
 
     def on_arg_parse(self, event: ArgParseEvent) -> None:
         group = event.arg_parser.add_argument_group("VedroHttpx")
-        group.add_argument("--httpx-save-requests", action="store_true",
-                           default=self._save_requests, help="<message>")
+        group.add_argument("--httpx-record-requests", action="store_true",
+                           default=self._record_requests, help="<message>")
 
     def on_arg_parsed(self, event: ArgParsedEvent) -> None:
-        self._save_requests = event.args.httpx_save_requests
-        if self._save_requests:
+        self._record_requests = event.args.httpx_record_requests
+        if self._record_requests:
             self._request_recorder.enable()
 
     async def on_scenario_run(self, event: ScenarioRunEvent) -> None:
-        if self._save_requests:
+        if self._record_requests:
             self._request_recorder.reset()
 
     async def on_scenario_end(self,
                               event: Union[ScenarioPassedEvent, ScenarioFailedEvent]) -> None:
-        if self._save_requests:
+        if self._record_requests:
             tmp_file = create_tmp_file(suffix=".har")
             self._request_recorder.save(tmp_file)
 
@@ -57,5 +57,7 @@ class VedroHTTPXPlugin(Plugin):
 
 class VedroHTTPX(PluginConfig):
     plugin = VedroHTTPXPlugin
+
+    record_requests: bool = False
 
     requests_artifact_name: str = "httpx-requests.har"
