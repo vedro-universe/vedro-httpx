@@ -51,7 +51,8 @@ class AsyncHTTPInterface(vedro.Interface):
 
     # Docs https://www.python-httpx.org/api/#asyncclient
     def _client(self, **kwargs: Any) -> AsyncClient:
-        client = AsyncClient(**kwargs)
+        base_url = kwargs.pop("base_url", self._base_url)
+        client = AsyncClient(base_url=base_url, **kwargs)
         client.event_hooks["response"].append(self._request_recorder.async_record)
         return client
 
@@ -71,7 +72,7 @@ class AsyncHTTPInterface(vedro.Interface):
                        timeout: Union[TimeoutTypes, UseClientDefault] = USE_CLIENT_DEFAULT,
                        **kwargs: Any
                        ) -> Response:
-        async with self._client(base_url=self._base_url) as client:
+        async with self._client() as client:
             return cast(Response, await client.request(
                 method=method,
                 url=url,

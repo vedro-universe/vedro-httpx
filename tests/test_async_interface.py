@@ -27,8 +27,26 @@ def test_async_interface():
         assert isinstance(interface, Interface)
 
 
-async def test_sync_request(*, async_http_interface: AsyncHTTPInterface, request_recorder_: Mock,
-                            async_transport: MockTransport, respx_mock: RouterType):
+async def test_async_request(*, request_recorder_: Mock, async_transport: MockTransport,
+                             respx_mock: RouterType):
+    with given:
+        base_url = build_url()
+        async_http_interface = AsyncHTTPInterface(base_url=base_url,
+                                                  request_recorder=request_recorder_)
+
+        respx_mock.get("/path").respond(200)
+
+    with when:
+        async with async_http_interface._client(transport=async_transport) as client:
+            response = await client.get("/path")
+
+    with then:
+        assert response.status_code == 200
+
+
+async def test_async_request_recorder(*, async_http_interface: AsyncHTTPInterface,
+                                      request_recorder_: Mock, async_transport: MockTransport,
+                                      respx_mock: RouterType):
     with given:
         respx_mock.get("/").respond(200)
 

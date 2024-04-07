@@ -49,7 +49,8 @@ class SyncHTTPInterface(vedro.Interface):
 
     # Docs https://www.python-httpx.org/api/#client
     def _client(self, **kwargs: Any) -> SyncClient:
-        client = SyncClient(**kwargs)
+        base_url = kwargs.pop("base_url", self._base_url)
+        client = SyncClient(base_url=base_url, **kwargs)
         client.event_hooks["response"].append(self._request_recorder.sync_record)
         return client
 
@@ -69,7 +70,7 @@ class SyncHTTPInterface(vedro.Interface):
                  timeout: Union[TimeoutTypes, UseClientDefault] = USE_CLIENT_DEFAULT,
                  **kwargs: Any
                  ) -> Response:
-        with self._client(base_url=self._base_url) as client:
+        with self._client() as client:
             return cast(Response, client.request(
                 method=method,
                 url=url,
