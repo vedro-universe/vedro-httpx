@@ -1,6 +1,6 @@
 from base64 import b64encode
 from datetime import datetime
-from email.message import Message
+from email.message import EmailMessage, Message
 from email.parser import Parser
 from email.policy import HTTP as HTTPPolicy
 from email.utils import parsedate_to_datetime
@@ -24,7 +24,7 @@ class BaseHARFormatter:
     def _format_cookies(self, headers: List[str]) -> List[har.Cookie]:
         cookies = []
         for header in headers:
-            cookie: SimpleCookie[Any] = SimpleCookie()
+            cookie = SimpleCookie()
             cookie.load(header)
             for name, morsel in cookie.items():
                 cookies.append(self._format_cookie(name, morsel))
@@ -86,15 +86,17 @@ class BaseHARFormatter:
         post_params = []
         multipart = self._parse_multipart(f"{header}{payload}")
         for part in multipart.get_payload():
+            assert isinstance(part, EmailMessage)
             name = part.get_param("name", header="Content-Disposition")
-            value = self._decode(part.get_payload(decode=True))
+            value = self._decode(part.get_payload(decode=True))  # type: ignore
             filename = part.get_param("filename", header="Content-Disposition")
 
             if filename:
                 part_type = part.get_content_type()
-                post_param = self._builder.build_post_param(name, value, filename, part_type)
+                post_param = self._builder.build_post_param(name, value,  # type: ignore
+                                                            filename, part_type)  # type: ignore
             else:
-                post_param = self._builder.build_post_param(name, value)
+                post_param = self._builder.build_post_param(name, value)  # type: ignore
             post_params.append(post_param)
 
         content_str = multipart.as_string()
@@ -103,6 +105,7 @@ class BaseHARFormatter:
     def _parse_multipart(self, multipart: str) -> Message:
         message: Message = Parser(policy=HTTPPolicy).parsestr(multipart)
         for part in message.get_payload():
+            assert isinstance(part, EmailMessage)
             if part.get_param("filename", header="Content-Disposition"):
                 part.set_payload("(binary)")
         return message
