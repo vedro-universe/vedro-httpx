@@ -10,8 +10,8 @@ from vedro.events import (
     ScenarioRunEvent,
 )
 
-from ._request_recorder import RequestRecorder
-from ._request_recorder import request_recorder as default_request_recorder
+from vedro_httpx.recorder import RequestRecorder
+from vedro_httpx.recorder import request_recorder as default_request_recorder
 
 __all__ = ("VedroHTTPX", "VedroHTTPXPlugin",)
 

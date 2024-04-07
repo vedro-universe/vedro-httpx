@@ -15,7 +15,8 @@ from vedro.events import (
     _ScenarioEvent,
 )
 
-from vedro_httpx import RequestRecorder, VedroHTTPX, VedroHTTPXPlugin
+from vedro_httpx import VedroHTTPX, VedroHTTPXPlugin
+from vedro_httpx.recorder import RequestRecorder
 
 from ._utils import request_recorder_
 

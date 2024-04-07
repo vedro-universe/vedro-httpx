@@ -6,12 +6,9 @@ import pytest
 import respx
 from httpx import MockTransport
 
-from vedro_httpx import AsyncHTTPInterface, RequestRecorder, SyncHTTPInterface
-from vedro_httpx.har import AsyncHARFormatter, HARBuilder
-from vedro_httpx.har import Header as HeaderType
-from vedro_httpx.har import Request as RequestType
-from vedro_httpx.har import Response as ResponseType
-from vedro_httpx.har import SyncHARFormatter
+import vedro_httpx.recorder.har as har
+from vedro_httpx import AsyncHTTPInterface, SyncHTTPInterface
+from vedro_httpx.recorder import AsyncHARFormatter, HARBuilder, RequestRecorder, SyncHARFormatter
 
 __all__ = ("sync_formatter", "async_formatter", "sync_httpx_client", "async_httpx_client",
            "sync_transport", "async_transport", "builder", "respx_mock", "build_url",
@@ -33,7 +30,7 @@ def build_url(path: str = "/", params: Optional[httpx.QueryParams] = None, *,
     return url
 
 
-def build_request(headers: Optional[List[HeaderType]] = None, **kwargs: Any) -> RequestType:
+def build_request(headers: Optional[List[har.Header]] = None, **kwargs: Any) -> har.Request:
     headers_ = [
         {"name": "host", "value": "localhost"},
         {"name": "accept", "value": "*/*"},
@@ -57,7 +54,7 @@ def build_request(headers: Optional[List[HeaderType]] = None, **kwargs: Any) -> 
     }
 
 
-def build_response(headers: Optional[List[HeaderType]] = None, **kwargs: Any) -> ResponseType:
+def build_response(headers: Optional[List[har.Header]] = None, **kwargs: Any) -> har.Response:
     headers_ = []
     if headers:
         headers_ += headers

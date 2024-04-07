@@ -10,7 +10,7 @@ from urllib.parse import parse_qsl
 
 import httpx
 
-import vedro_httpx.har._types as har
+import vedro_httpx.recorder.har as har
 
 from ._har_builder import HARBuilder
 

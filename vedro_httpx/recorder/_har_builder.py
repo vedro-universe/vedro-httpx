@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-import vedro_httpx.har._types as har
+import vedro_httpx.recorder.har as har
 
 __all__ = ("HARBuilder",)
 

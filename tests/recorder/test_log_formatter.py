@@ -3,10 +3,7 @@ from datetime import datetime
 import httpx
 from baby_steps import given, then, when
 
-from vedro_httpx import __version__ as version
-from vedro_httpx.har import AsyncHARFormatter, SyncHARFormatter
-
-from .._utils import (
+from tests._utils import (
     AsyncHTTPClientType,
     HTTPClientType,
     RouterType,
@@ -22,6 +19,8 @@ from .._utils import (
     sync_httpx_client,
     sync_transport,
 )
+from vedro_httpx import __version__ as version
+from vedro_httpx.recorder import AsyncHARFormatter, SyncHARFormatter
 
 __all__ = ("sync_formatter", "async_formatter", "sync_httpx_client", "async_httpx_client",
            "sync_transport", "async_transport", "builder", "respx_mock",)  # fixtures

@@ -2,9 +2,7 @@ import httpx
 import pytest
 from baby_steps import given, then, when
 
-from vedro_httpx.har import SyncHARFormatter
-
-from .._utils import (
+from tests._utils import (
     HTTPClientType,
     RouterType,
     build_request,
@@ -16,6 +14,7 @@ from .._utils import (
     sync_httpx_client,
     sync_transport,
 )
+from vedro_httpx.recorder import SyncHARFormatter
 
 __all__ = ("sync_formatter", "sync_httpx_client", "sync_transport", "builder",
            "respx_mock",)  # fixtures

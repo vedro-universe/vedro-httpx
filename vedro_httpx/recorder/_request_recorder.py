@@ -2,9 +2,12 @@ import json
 from pathlib import Path
 from typing import List
 
-from ._response import Response
-from ._version import version as vedro_httpx_version
-from .har import AsyncHARFormatter, Entry, HARBuilder, SyncHARFormatter
+from .._response import Response
+from .._version import version as vedro_httpx_version
+from ._async_har_formatter import AsyncHARFormatter
+from ._har_builder import HARBuilder
+from ._sync_har_formatter import SyncHARFormatter
+from .har import Entry
 
 __all__ = ("request_recorder", "RequestRecorder",)
 

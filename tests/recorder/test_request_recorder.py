@@ -5,11 +5,10 @@ from unittest.mock import AsyncMock, MagicMock, Mock
 import pytest
 from baby_steps import given, then, when
 
-from vedro_httpx import RequestRecorder
 from vedro_httpx import __version__ as vedro_httpx_version
-from vedro_httpx.har import AsyncHARFormatter, HARBuilder, SyncHARFormatter
+from vedro_httpx.recorder import AsyncHARFormatter, HARBuilder, RequestRecorder, SyncHARFormatter
 
-from ._utils import async_formatter, builder, request_recorder, sync_formatter
+from .._utils import async_formatter, builder, request_recorder, sync_formatter
 
 __all__ = ("builder", "sync_formatter", "async_formatter", "request_recorder",)  # fixtures
 

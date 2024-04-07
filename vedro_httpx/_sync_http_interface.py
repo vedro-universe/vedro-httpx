@@ -15,9 +15,9 @@ from httpx._types import (
     TimeoutTypes,
 )
 
-from ._request_recorder import RequestRecorder
-from ._request_recorder import request_recorder as default_request_recorder
 from ._response import Response
+from .recorder import RequestRecorder
+from .recorder import request_recorder as default_request_recorder
 
 __all__ = ("SyncHTTPInterface", "SyncClient",)
 

@@ -2,7 +2,7 @@ from typing import List
 
 import httpx
 
-import vedro_httpx.har._types as har
+import vedro_httpx.recorder.har as har
 
 from ._base_har_formatter import BaseHARFormatter
 
