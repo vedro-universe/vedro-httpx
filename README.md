@@ -58,7 +58,7 @@ class Config(vedro.Config):
 ```python
 from vedro_httpx import Response, AsyncHTTPInterface
 
-class Api(AsyncHTTPInterface):
+class AuthAPI(AsyncHTTPInterface):
     def __init__(self, base_url: str = "http://localhost:8080") -> None:
         super().__init__(base_url)
 
@@ -71,7 +71,7 @@ class Api(AsyncHTTPInterface):
 ```python
 from vedro_httpx import Response, AsyncHTTPInterface
 
-class Api(AsyncHTTPInterface):
+class AuthAPI(AsyncHTTPInterface):
     def __init__(self, base_url: str = "http://localhost:8080") -> None:
         super().__init__(base_url)
 

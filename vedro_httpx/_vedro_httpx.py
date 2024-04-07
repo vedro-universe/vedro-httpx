@@ -33,8 +33,10 @@ class VedroHTTPXPlugin(Plugin):
 
     def on_arg_parse(self, event: ArgParseEvent) -> None:
         group = event.arg_parser.add_argument_group("VedroHttpx")
+        help_message = ("Enable recording of HTTP requests made during scenario execution. "
+                        "Recorded data will be saved as a scenario artifact in HAR format.")
         group.add_argument("--httpx-record-requests", action="store_true",
-                           default=self._record_requests, help="<message>")
+                           default=self._record_requests, help=help_message)
 
     def on_arg_parsed(self, event: ArgParsedEvent) -> None:
         self._record_requests = event.args.httpx_record_requests
@@ -58,6 +60,10 @@ class VedroHTTPXPlugin(Plugin):
 class VedroHTTPX(PluginConfig):
     plugin = VedroHTTPXPlugin
 
+    # Enable recording of HTTP requests
+    # When enabled, the plugin records HTTP requests made during scenario execution
+    # and saves the data as a scenario artifact in HAR format
     record_requests: bool = False
 
+    # Artifact file name for recorded HTTP requests
     requests_artifact_name: str = "httpx-requests.har"
