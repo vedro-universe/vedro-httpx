@@ -25,7 +25,9 @@ class AsyncHARFormatter(BaseHARFormatter):
 
         started_at = self._format_request_started_at(request)
         time = self._format_elapsed(response)
-        return self._builder.build_entry(formatted_request, formatted_response, started_at, time)
+        server_ip_address = self._get_server_ip_address(response)
+        return self._builder.build_entry(formatted_request, formatted_response, started_at, time,
+                                         server_ip_address)
 
     async def format_request(self, request: httpx.Request, *,
                              http_version: str = "HTTP/1.1") -> har.Request:

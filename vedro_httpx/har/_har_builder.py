@@ -33,7 +33,8 @@ class HARBuilder:
                     request: har.Request,
                     response: har.Response,
                     started_date_time: str,
-                    time: int) -> har.Entry:
+                    time: int,
+                    server_ip_address: Optional[str] = None) -> har.Entry:
         entry: har.Entry = {
             "startedDateTime": started_date_time,
             "time": time,
@@ -46,6 +47,8 @@ class HARBuilder:
                 "receive": 0,
             },
         }
+        if server_ip_address is not None:
+            entry["serverIPAddress"] = server_ip_address
         return entry
 
     def build_request(self,

@@ -5,7 +5,7 @@ from email.parser import Parser
 from email.policy import HTTP as HTTPPolicy
 from email.utils import parsedate_to_datetime
 from http.cookies import Morsel, SimpleCookie
-from typing import Any, List, Tuple, cast
+from typing import Any, List, Tuple, Union, cast
 from urllib.parse import parse_qsl
 
 import httpx
@@ -154,6 +154,15 @@ class BaseHARFormatter:
 
     def _get_content_type(self, headers: httpx.Headers) -> str:
         return cast(str, headers.get("Content-Type", "x-unknown"))
+
+    def _get_server_ip_address(self, response: httpx.Response) -> Union[str, None]:
+        network_stream = response.extensions.get("network_stream")
+        if network_stream is None:
+            return None
+        server_addr = network_stream.get_extra_info("server_addr")
+        if server_addr is None:
+            return None
+        return str(server_addr[0])
 
     def _get_request_started_at(self, request: httpx.Request) -> datetime:
         started_at = request.extensions.get("vedro_httpx_started_at", datetime.now())
