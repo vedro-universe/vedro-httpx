@@ -1,9 +1,12 @@
 from typing import Any, Callable, List, Optional, Tuple
+from unittest.mock import Mock
 
 import httpx
 import pytest
 import respx
+from httpx import MockTransport
 
+from vedro_httpx import AsyncHTTPInterface, RequestRecorder, SyncHTTPInterface
 from vedro_httpx.har import AsyncHARFormatter, HARBuilder
 from vedro_httpx.har import Header as HeaderType
 from vedro_httpx.har import Request as RequestType
@@ -11,8 +14,10 @@ from vedro_httpx.har import Response as ResponseType
 from vedro_httpx.har import SyncHARFormatter
 
 __all__ = ("sync_formatter", "async_formatter", "sync_httpx_client", "async_httpx_client",
-           "builder", "respx_mock", "build_url", "build_request", "build_response",
-           "get_request_multipart", "HTTPClientType", "AsyncHTTPClientType", "RouterType")
+           "sync_transport", "async_transport", "builder", "respx_mock", "build_url",
+           "build_request", "build_response", "get_request_multipart", "request_recorder",
+           "request_recorder_", "sync_http_interface", "async_http_interface",
+           "HTTPClientType", "AsyncHTTPClientType", "RouterType",)
 
 
 HTTPClientType = Callable[..., httpx.Client]
@@ -105,13 +110,42 @@ def respx_mock() -> RouterType:
 
 
 @pytest.fixture()
-def sync_httpx_client(respx_mock: RouterType) -> HTTPClientType:
-    mock_transport = httpx.MockTransport(respx_mock.handler)
-    return lambda **kwargs: httpx.Client(transport=mock_transport, base_url=build_url(), **kwargs)
+def sync_transport(respx_mock: RouterType) -> MockTransport:
+    return MockTransport(respx_mock.handler)
 
 
 @pytest.fixture()
-def async_httpx_client(respx_mock: RouterType) -> AsyncHTTPClientType:
-    mock_transport = httpx.MockTransport(respx_mock.async_handler)
-    return lambda **kwargs: httpx.AsyncClient(transport=mock_transport,
+def sync_httpx_client(sync_transport: MockTransport) -> HTTPClientType:
+    return lambda **kwargs: httpx.Client(transport=sync_transport, base_url=build_url(), **kwargs)
+
+
+@pytest.fixture()
+def async_transport(respx_mock: RouterType) -> MockTransport:
+    return MockTransport(respx_mock.async_handler)
+
+
+@pytest.fixture()
+def async_httpx_client(async_transport: MockTransport) -> AsyncHTTPClientType:
+    return lambda **kwargs: httpx.AsyncClient(transport=async_transport,
                                               base_url=build_url(), **kwargs)
+
+
+@pytest.fixture
+def request_recorder(builder: HARBuilder, sync_formatter: SyncHARFormatter,
+                     async_formatter: AsyncHARFormatter) -> RequestRecorder:
+    return RequestRecorder(builder, sync_formatter, async_formatter)
+
+
+@pytest.fixture
+def request_recorder_() -> Mock:
+    return Mock(spec=RequestRecorder)
+
+
+@pytest.fixture
+def sync_http_interface(request_recorder_: RequestRecorder) -> SyncHTTPInterface:
+    return SyncHTTPInterface(request_recorder=request_recorder_)
+
+
+@pytest.fixture
+def async_http_interface(request_recorder_: RequestRecorder) -> AsyncHTTPInterface:
+    return AsyncHTTPInterface(request_recorder=request_recorder_)

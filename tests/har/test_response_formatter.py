@@ -2,7 +2,7 @@ from baby_steps import given, then, when
 
 from vedro_httpx.har import SyncHARFormatter
 
-from ._utils import (
+from .._utils import (
     HTTPClientType,
     RouterType,
     build_response,
@@ -10,9 +10,11 @@ from ._utils import (
     respx_mock,
     sync_formatter,
     sync_httpx_client,
+    sync_transport,
 )
 
-__all__ = ("sync_formatter", "builder", "respx_mock", "sync_httpx_client",)  # fixtures
+__all__ = ("sync_formatter", "sync_httpx_client", "sync_transport", "builder",
+           "respx_mock",)  # fixtures
 
 
 def test_response(*, sync_formatter: SyncHARFormatter, respx_mock: RouterType,

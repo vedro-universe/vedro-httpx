@@ -6,12 +6,13 @@ from baby_steps import given, then, when
 from vedro_httpx import __version__ as version
 from vedro_httpx.har import AsyncHARFormatter, SyncHARFormatter
 
-from ._utils import (
+from .._utils import (
     AsyncHTTPClientType,
     HTTPClientType,
     RouterType,
     async_formatter,
     async_httpx_client,
+    async_transport,
     build_request,
     build_response,
     build_url,
@@ -19,10 +20,11 @@ from ._utils import (
     respx_mock,
     sync_formatter,
     sync_httpx_client,
+    sync_transport,
 )
 
 __all__ = ("sync_formatter", "async_formatter", "sync_httpx_client", "async_httpx_client",
-           "builder", "respx_mock",)  # fixtures
+           "sync_transport", "async_transport", "builder", "respx_mock",)  # fixtures
 
 
 def test_sync_format_responses(*, sync_formatter: SyncHARFormatter, respx_mock: RouterType,
