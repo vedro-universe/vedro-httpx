@@ -10,7 +10,23 @@ __all__ = ("SyncHARFormatter",)
 
 
 class SyncHARFormatter(BaseHARFormatter):
+    """
+    Formatter for creating HAR (HTTP Archive) entries and logs from HTTP responses obtained
+    through synchronous requests using httpx.Client. This class utilizes the common formatting
+    functionalities provided by BaseHARFormatter to process and transform HTTP request and
+    response data into the standardized HAR format.
+    """
+
     def format(self, responses: List[httpx.Response]) -> har.Log:
+        """
+        Create a HAR log from a list of HTTP responses.
+
+        Iterates over each response, formats it along with its corresponding request into a HAR
+        entry, and then compiles these entries into a HAR log.
+
+        :param responses: A list of httpx.Response objects to be formatted.
+        :return: A HAR log dictionary that encapsulates all the formatted entries.
+        """
         entries = []
         for response in responses:
             entry = self.format_entry(response, response.request)
@@ -19,6 +35,13 @@ class SyncHARFormatter(BaseHARFormatter):
         return self._builder.build_log(entries)
 
     def format_entry(self, response: httpx.Response, request: httpx.Request) -> har.Entry:
+        """
+        Format a single HTTP response and its associated request into a HAR entry.
+
+        :param response: The httpx.Response object to format.
+        :param request: The httpx.Request object associated with the response to format.
+        :return: A HAR entry dictionary encapsulating the formatted request and response.
+        """
         formatted_response = self.format_response(response)
         # httpx does not provide the HTTP version of the request
         formatted_request = self.format_request(request, http_version=response.http_version)
@@ -31,6 +54,13 @@ class SyncHARFormatter(BaseHARFormatter):
 
     def format_request(self, request: httpx.Request, *,
                        http_version: str = "HTTP/1.1") -> har.Request:
+        """
+        Format an HTTP request into a HAR request object.
+
+        :param request: The httpx.Request object to format.
+        :param http_version: The HTTP version to use in the formatting (default "HTTP/1.1").
+        :return: A HAR request dictionary.
+        """
         if content := request.read():
             content_type = self._get_content_type(request.headers)
             post_data = self._format_request_post_data(content, content_type)
@@ -48,6 +78,12 @@ class SyncHARFormatter(BaseHARFormatter):
         )
 
     def format_response(self, response: httpx.Response) -> har.Response:
+        """
+        Format an HTTP response into a HAR response object.
+
+        :param response: The httpx.Response object to format.
+        :return: A HAR response dictionary encapsulating the formatted response details.
+        """
         return self._builder.build_response(
             status=response.status_code,
             status_text=response.reason_phrase,
@@ -59,6 +95,12 @@ class SyncHARFormatter(BaseHARFormatter):
         )
 
     def format_response_content(self, response: httpx.Response) -> har.Content:
+        """
+        Format the content of an HTTP response into a HAR content object.
+
+        :param response: The httpx.Response object whose content is to be formatted.
+        :return: A HAR content dictionary.
+        """
         content_type = self._get_content_type(response.headers)
         try:
             content = response.read()

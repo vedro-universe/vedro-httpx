@@ -14,6 +14,18 @@ __all__ = ("render_response",)
 
 def render_response(response: Response, *,
                     theme: str = "ansi_dark", width: Optional[int] = None) -> RenderResult:
+    """
+    Yield formatted sections of an HTTP response for rendering in a rich console.
+
+    This function creates visually appealing and structured representations of HTTP response
+    headers and body using syntax highlighting. It automatically selects appropriate lexers for
+    different content types and applies themes and formatting options.
+
+    :param response: The HTTP response object from httpx to render.
+    :param theme: The color theme to use for syntax highlighting (default 'ansi_dark').
+    :param width: The maximum width for the code blocks. If not set, defaults to console width.
+    :return: Yields formatted rich syntax objects for headers and body.
+    """
     yield "Response:"
     headers, http_lexer = format_response_headers(response)
     yield Syntax(headers, http_lexer, theme=theme, word_wrap=True, code_width=width)
@@ -24,6 +36,14 @@ def render_response(response: Response, *,
 
 
 def format_response_headers(response: Response) -> Tuple[str, Lexer]:
+    """
+    Format the HTTP headers of a response and determine the appropriate lexer for syntax
+    highlighting.
+
+    :param response: The HTTP response object whose headers are to be formatted.
+    :return: A tuple containing the formatted headers as a string and the corresponding
+             HttpLexer instance.
+    """
     lines = [f"{response.http_version} {response.status_code} {response.reason_phrase}"]
     for header in response.headers:
         values = response.headers.get_list(header)
@@ -34,6 +54,17 @@ def format_response_headers(response: Response) -> Tuple[str, Lexer]:
 
 
 def format_response_body(response: Response) -> Tuple[Any, Union[Lexer, str]]:
+    """
+    Format the body of an HTTP response and select an appropriate lexer for syntax highlighting.
+
+    This function handles various content types intelligently, using a JSON lexer for JSON content
+    to improve formatting, and defaulting to plain text or binary previews for unsupported types.
+
+    :param response: The HTTP response object whose body is to be formatted.
+    :return: A tuple containing the formatted body as a string (or a placeholder for binary data)
+             and the lexer to use for syntax highlighting, or an empty string if no suitable
+             lexer is found.
+    """
     content_type = response.headers.get("Content-Type", "")
     mime_type, *_ = content_type.split(";")
     try:
@@ -46,6 +77,6 @@ def format_response_body(response: Response) -> Tuple[Any, Union[Lexer, str]]:
     if isinstance(lexer, JsonLexer):
         try:
             code = json.dumps(response.json(), indent=4)
-        except BaseException:
+        except Exception:
             return code, TextLexer()
     return code, lexer

@@ -1,4 +1,9 @@
-# http://www.softwareishard.com/blog/har-12-spec/
+"""
+This code defines TypedDict classes for constructing HTTP Archive (HAR) format logs.
+These classes adhere to the HAR 1.2 Specification, which structures the way HTTP transactions
+are logged in browsers. More details on the specification can be found at:
+http://www.softwareishard.com/blog/har-12-spec/
+"""
 import sys
 from typing import List, TypedDict
 
@@ -47,7 +52,7 @@ class Page(TypedDict):
     # (ISO 8601 - YYYY-MM-DDThh:mm:ss.sTZD, e.g. 2009-07-24T19:20:30.45+01:00).
     startedDateTime: str
 
-    # Unique identifier of a page within the <log>. Entries use it to refer the parent page.
+    # Unique identifier of a page within the log. Entries use it to refer the parent page.
     id: str
 
     # Page title.
@@ -77,10 +82,10 @@ class Cookie(TypedDict):
     # (ISO 8601 - YYYY-MM-DDThh:mm:ss.sTZD, e.g. 2009-07-24T19:20:30.123+02:00).
     expires: NotRequired[str]
 
-    # Set to true if the cookie is HTTP only, false otherwise.
+    # Set to true if the cookie is HTTP-only, false otherwise.
     httpOnly: NotRequired[bool]
 
-    # True if the cookie was transmitted over ssl, false otherwise.
+    # True if the cookie was transmitted over SSL, false otherwise.
     secure: NotRequired[bool]
 
     # A comment provided by the user or the application.
@@ -113,7 +118,7 @@ class PostParam(TypedDict):
     # Name of a posted parameter.
     name: str
 
-    # Value of a posted parameter or content of a posted file.
+    # Value of a posted parameter, or content of a posted file.
     value: str
 
     # Name of a posted file.
