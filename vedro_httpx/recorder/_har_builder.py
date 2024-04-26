@@ -100,7 +100,8 @@ class HARBuilder:
                       query_string: List[har.QueryParam],
                       headers: List[har.Header],
                       cookies: List[har.Cookie],
-                      post_data: Optional[har.PostData] = None) -> har.Request:
+                      post_data: Optional[har.PostData] = None,
+                      parameterized_url: Optional[str] = None) -> har.Request:
         """
         Construct a request component for a HAR entry.
 
@@ -125,6 +126,8 @@ class HARBuilder:
         }
         if post_data is not None:
             request["postData"] = post_data
+        if parameterized_url is not None:
+            request["_parameterized_url"] = parameterized_url
         return request
 
     def build_query_param(self, name: str, value: str) -> har.QueryParam:
