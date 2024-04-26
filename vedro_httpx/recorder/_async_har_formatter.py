@@ -67,6 +67,8 @@ class AsyncHARFormatter(BaseHARFormatter):
         else:
             post_data = None
 
+        parameterized_url = request.extensions.get("vedro_httpx_parameterized_url", None)
+
         return self._builder.build_request(
             method=request.method,
             url=str(request.url),
@@ -75,6 +77,7 @@ class AsyncHARFormatter(BaseHARFormatter):
             headers=self._format_headers(request.headers),
             cookies=self._format_cookies(self._get_request_cookies(request.headers)),
             post_data=post_data,
+            parameterized_url=parameterized_url,
         )
 
     async def format_response(self, response: httpx.Response) -> har.Response:

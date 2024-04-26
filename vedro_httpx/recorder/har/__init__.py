@@ -178,6 +178,8 @@ class Request(TypedDict):
     # Request method (GET, POST, ...).
     method: str
 
+    _parameterized_url: NotRequired[str]
+
     # Absolute URL of the request (fragments are not included).
     url: str
 

@@ -28,6 +28,12 @@ setup(
     license="Apache-2.0",
     packages=find_packages(exclude=["tests", "tests.*"]),
     package_data={"vedro_httpx": ["py.typed"]},
+    entry_points={
+        "console_scripts": [
+            "vedro-httpx = vedro_httpx.__main__:main",
+            "vedro_httpx = vedro_httpx.__main__:main",
+        ]
+    },
     install_requires=find_required(),
     tests_require=find_dev_required(),
     classifiers=[
