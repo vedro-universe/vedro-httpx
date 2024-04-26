@@ -35,8 +35,8 @@ class OpenAPISpecGenerator:
         for base_path, methods in api_spec.items():
             for (method, path), details in methods.items():
                 if path not in openapi_spec["paths"]:
-                    openapi_spec["paths"][path] = {}
-                openapi_spec["paths"][path][method.lower()] = {
+                    openapi_spec["paths"][path] = {}  # type: ignore
+                openapi_spec["paths"][path][method.lower()] = {  # type: ignore
                     "summary": f"Endpoint for {method} {path}",
                     "operationId": self._get_operation_id(method, path),
                     "parameters": self._build_params(details) + self._build_headers(details),

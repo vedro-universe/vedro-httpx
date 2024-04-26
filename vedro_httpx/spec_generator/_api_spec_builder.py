@@ -10,7 +10,7 @@ class APISpecBuilder:
         urls = {entry["request"]["url"] for entry in entries}
         base_path = self._get_base_path(urls)
 
-        spec = {
+        spec: Dict[str, Any] = {
             base_path: {}
         }
 
