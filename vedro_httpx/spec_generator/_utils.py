@@ -2,6 +2,18 @@ import re
 
 
 def humanize_identifier(name: str) -> str:
+    """
+    Converts a given identifier into a human-readable format.
+
+    This function replaces underscores, hyphens, and camelCase or TitleCase
+    conventions with spaces and capitalizes the result. It handles various
+    common identifier naming conventions such as snake_case, kebab-case,
+    camelCase, and TitleCase.
+
+    :param name: The identifier to be converted.
+    :return: A human-readable version of the identifier, with the first letter capitalized.
+    """
+
     if not name:
         return ""
 

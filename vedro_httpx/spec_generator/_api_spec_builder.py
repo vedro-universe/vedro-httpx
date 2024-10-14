@@ -7,7 +7,21 @@ __all__ = ("APISpecBuilder",)
 
 
 class APISpecBuilder:
+    """
+    Builds a structured API specification from a list of HAR entries.
+
+    This class processes HTTP request and response data from HAR entries,
+    organizing them into an API specification format suitable for further
+    documentation or testing.
+    """
+
     def build_spec(self, entries: List[har.Entry]) -> Dict[str, Any]:
+        """
+        Build an API specification from the given HAR entries.
+
+        :param entries: A list of HAR entries containing HTTP request and response data.
+        :return: A dictionary representing the API specification.
+        """
         urls = {self._get_url(entry["request"]) for entry in entries}
         base_path = self._get_base_path(urls)
 
@@ -46,6 +60,13 @@ class APISpecBuilder:
         return spec
 
     def _create_route(self, method: str, path: str) -> Tuple[Tuple[str, str], Dict[str, Any]]:
+        """
+        Create a route dictionary for an API method and path.
+
+        :param method: The HTTP method (e.g., GET, POST).
+        :param path: The API endpoint path.
+        :return: A tuple containing the method-path tuple and the route details dictionary.
+        """
         return (method, path), {
             "total": 0,
             "headers": {},
@@ -54,10 +75,22 @@ class APISpecBuilder:
         }
 
     def _get_url(self, request: har.Request) -> str:
+        """
+        Extract the full URL from a HAR request object.
+
+        :param request: A dictionary containing the HAR request data.
+        :return: The full URL as a string.
+        """
         parsed_url = urlparse(request.get("_parameterized_url", request["url"]))
         return f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}"
 
     def _get_base_path(self, urls: Set[str]) -> str:
+        """
+        Determine the common base path from a set of URLs.
+
+        :param urls: A set of URLs from the HAR entries.
+        :return: The common base path shared by the URLs.
+        """
         parts = [url.split("/") for url in urls]
         common_path = []
 
