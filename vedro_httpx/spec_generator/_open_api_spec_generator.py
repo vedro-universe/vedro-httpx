@@ -2,6 +2,8 @@ from typing import Any, Dict, List, Sequence
 
 import yaml
 
+from ._utils import humanize_identifier
+
 __all__ = ("OpenAPISpecGenerator",)
 
 STANDARD_HEADERS = (
@@ -26,9 +28,7 @@ class OpenAPISpecGenerator:
                 "title": "API",
                 "version": "1.0.0"
             },
-            "servers": [{
-                "url": [url for url in api_spec.keys()]
-            }],
+            "servers": [{"url": url} for url in api_spec.keys()],
             "paths": {}
         }
 
@@ -46,7 +46,10 @@ class OpenAPISpecGenerator:
         return yaml.dump(openapi_spec, sort_keys=False, allow_unicode=True)
 
     def _get_operation_id(self, method: str, path: str) -> str:
-        return method.lower() + "_" + path.replace("/", "_").strip("_")
+        replacements = {"/": "_", "{": "", "}": ""}
+        for old, new in replacements.items():
+            path = path.replace(old, new)
+        return method.lower() + "_" + path.strip("_")
 
     def _build_params(self, details: Dict[str, Any]) -> List[Dict[str, Any]]:
         parameters = []
@@ -55,7 +58,7 @@ class OpenAPISpecGenerator:
                 "name": param,
                 "in": "query",
                 "required": info["requests"] == details["total"],
-                "description": "",
+                "description": f"{humanize_identifier(param)} param",
                 "schema": {
                     "type": "string"
                 }
@@ -71,7 +74,7 @@ class OpenAPISpecGenerator:
                 "name": header,
                 "in": "header",
                 "required": info["requests"] == details["total"],
-                "description": "",
+                "description": f"{humanize_identifier(header)} header",
                 "schema": {
                     "type": "string"
                 }

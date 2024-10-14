@@ -1,4 +1,5 @@
 from typing import Any, Dict, List, Set, Tuple
+from urllib.parse import urlparse
 
 import vedro_httpx.recorder.har as har
 
@@ -7,7 +8,7 @@ __all__ = ("APISpecBuilder",)
 
 class APISpecBuilder:
     def build_spec(self, entries: List[har.Entry]) -> Dict[str, Any]:
-        urls = {entry["request"]["url"] for entry in entries}
+        urls = {self._get_url(entry["request"]) for entry in entries}
         base_path = self._get_base_path(urls)
 
         spec: Dict[str, Any] = {
@@ -53,7 +54,8 @@ class APISpecBuilder:
         }
 
     def _get_url(self, request: har.Request) -> str:
-        return request.get("_parameterized_url", request["url"])
+        parsed_url = urlparse(request.get("_parameterized_url", request["url"]))
+        return f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}"
 
     def _get_base_path(self, urls: Set[str]) -> str:
         parts = [url.split("/") for url in urls]
