@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Optional, Union, cast
+from typing import Any, Dict, Optional, Union, cast
 
 import vedro
 from httpx import Client as _SyncClient
@@ -100,6 +100,7 @@ class SyncHTTPInterface(vedro.Interface):
                  follow_redirects: Union[bool, UseClientDefault] = USE_CLIENT_DEFAULT,
                  timeout: Union[TimeoutTypes, UseClientDefault] = USE_CLIENT_DEFAULT,
                  extensions: Optional[RequestExtensions] = None,
+                 segments: Optional[Dict[str, Any]] = None,
                  **kwargs: Any
                  ) -> Response:
         """
@@ -125,6 +126,16 @@ class SyncHTTPInterface(vedro.Interface):
         :param kwargs: Additional keyword arguments to pass to the request method.
         :return: A `Response` object containing the server's response to the HTTP request.
         """
+        if segments:
+            if extensions is None:
+                extensions = {}
+
+            parameterized_url = str(url)
+            if self._base_url:
+                parameterized_url = str(self._base_url).lstrip("/") + parameterized_url
+            extensions["vedro_httpx_parameterized_url"] = parameterized_url
+            url = str(url).format(**segments)
+
         with self._client() as client:
             return cast(Response, client.request(
                 method=method,
