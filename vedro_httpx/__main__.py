@@ -4,6 +4,16 @@ from vedro_httpx.spec_generator import APISpecBuilder, HARReader, OpenAPISpecGen
 
 
 def generate_spec(har_directory: str) -> str:
+    """
+    Generate an OpenAPI specification from HAR files in a specified directory.
+
+    This function reads all HAR files from the provided directory, extracts
+    HTTP request and response data, builds an API specification, and converts
+    it into an OpenAPI specification format.
+
+    :param har_directory: The directory path where HAR files are located.
+    :return: The generated OpenAPI specification as a YAML string.
+    """
     har_reader = HARReader(har_directory)
     entries = har_reader.get_entries()
 
@@ -17,6 +27,13 @@ def generate_spec(har_directory: str) -> str:
 
 
 def main() -> None:
+    """
+    Main entry point of the script.
+
+    This function checks for the correct usage of the script by verifying
+    the command-line arguments, generates an OpenAPI specification from the
+    HAR directory provided as input, and prints the result.
+    """
     if len(sys.argv) != 2:
         print("Usage: vedro-httpx <har_directory>")
         sys.exit(1)
