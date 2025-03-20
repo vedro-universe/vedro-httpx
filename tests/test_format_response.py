@@ -1,6 +1,7 @@
 from os import linesep
 
 from baby_steps import given, then, when
+from httpx import Request
 from pygments.lexers import HttpLexer, JsonLexer, TextLexer
 from rich.syntax import Syntax
 
@@ -8,7 +9,7 @@ from vedro_httpx import Response
 from vedro_httpx._render_response import (
     format_response_body,
     format_response_headers,
-    render_response,
+    render_response, render_request,
 )
 
 
@@ -140,3 +141,65 @@ def test_render_response():
         assert isinstance(json_syntax, Syntax)
         assert json_syntax.code == '{\n    "id": 1\n}'
         assert isinstance(json_syntax.lexer, JsonLexer)
+
+
+def test_render_response_with_get_request():
+    with given:
+        request = Request(
+            method='GET',
+            url='http://get_url.com',
+            params={'test': 1},
+            headers={'User-Agent': 'pytest'},
+        )
+
+    with when:
+        res = render_request(request)
+
+    with then:
+        request_url_text, text_headers, headers_syntax = list(res)
+
+        assert request_url_text == "GET http://get_url.com?test=1"
+
+        assert text_headers == 'Request headers:'
+
+        assert isinstance(headers_syntax, Syntax)
+        assert headers_syntax.code == linesep.join([
+            "host: get_url.com",
+            "user-agent: pytest",
+        ])
+        assert isinstance(headers_syntax.lexer, HttpLexer)
+
+def test_render_response_with_post_request_json():
+    with given:
+        request = Request(
+            method='POST',
+            url='http://get_url.com',
+            params={'test': 1},
+            headers={'User-Agent': 'pytest', 'Content-Type': 'application/json'},
+            json={'id': 1}
+        )
+
+    with when:
+        res = render_request(request)
+
+    with then:
+        request_url_text, text_headers, headers_syntax, text_body, body_syntax = list(res)
+        assert request_url_text == "POST http://get_url.com?test=1"
+
+        assert text_headers == 'Request headers:'
+
+        assert isinstance(headers_syntax, Syntax)
+        assert headers_syntax.code == linesep.join([
+            "host: get_url.com",
+            "user-agent: pytest",
+            "content-type: application/json",
+            "content-length: 8"
+        ])
+        assert isinstance(headers_syntax.lexer, HttpLexer)
+
+        assert text_body == 'Request body:'
+
+        assert isinstance(body_syntax, Syntax)
+        assert body_syntax.code == '"{\\"id\\":1}"'
+        assert isinstance(body_syntax.lexer, JsonLexer)
+
