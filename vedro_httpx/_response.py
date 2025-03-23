@@ -1,4 +1,7 @@
 import json
+from json import JSONDecodeError
+
+from httpx._status_codes import codes
 
 from httpx import Response as _Response
 from rich.console import Console, ConsoleOptions, RenderResult

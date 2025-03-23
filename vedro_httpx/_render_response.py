@@ -34,7 +34,7 @@ def render_response(response: Response, *,
     :param width: The maximum width for the code blocks. If not set, defaults to console width.
     :return: Yields formatted rich syntax objects for headers and body.
     """
-    yield "Response:"
+    yield "← Response"
     headers, http_lexer = format_response_headers(response)
     yield Syntax(headers, http_lexer, theme=theme, word_wrap=True, code_width=width)
 
@@ -45,14 +45,12 @@ def render_response(response: Response, *,
 
 def render_request(request: Request, *,
                    theme: str = "ansi_dark", width: Optional[int] = None) -> RenderResult:
-    yield f"{request.method} {request.url}"
-    yield "Request headers:"
+    yield f"\n→ Request {request.method} {request.url}"
     headers, http_lexer = format_request_headers(request)
     yield Syntax(headers, http_lexer, theme=theme, word_wrap=True, code_width=width)
 
     body, lexer = format_request_body(request)
     if body is not None:
-        yield "Request body:"
         yield Syntax(body, lexer, theme=theme, word_wrap=True, code_width=width)
 
 def headers_lines(headers: Headers) -> List[str]:

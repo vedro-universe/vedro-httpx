@@ -2,6 +2,7 @@ from os import linesep
 
 from baby_steps import given, then, when
 from httpx import Request
+from httpx._client import BaseClient
 from pygments.lexers import HttpLexer, JsonLexer, TextLexer
 from rich.syntax import Syntax
 
@@ -128,7 +129,7 @@ def test_render_response():
 
     with then:
         text, http_syntax, json_syntax = list(res)
-        assert text == "Response:"
+        assert text == "← Response"
 
         assert isinstance(http_syntax, Syntax)
         assert http_syntax.code == linesep.join([
@@ -156,11 +157,9 @@ def test_render_response_with_get_request():
         res = render_request(request)
 
     with then:
-        request_url_text, text_headers, headers_syntax = list(res)
+        request_url_text, headers_syntax = list(res)
 
-        assert request_url_text == "GET http://get_url.com?test=1"
-
-        assert text_headers == 'Request headers:'
+        assert request_url_text == "\n→ Request GET http://get_url.com?test=1"
 
         assert isinstance(headers_syntax, Syntax)
         assert headers_syntax.code == linesep.join([
@@ -168,6 +167,7 @@ def test_render_response_with_get_request():
             "user-agent: pytest",
         ])
         assert isinstance(headers_syntax.lexer, HttpLexer)
+
 
 def test_render_response_with_post_request_json():
     with given:
@@ -183,10 +183,8 @@ def test_render_response_with_post_request_json():
         res = render_request(request)
 
     with then:
-        request_url_text, text_headers, headers_syntax, text_body, body_syntax = list(res)
-        assert request_url_text == "POST http://get_url.com?test=1"
-
-        assert text_headers == 'Request headers:'
+        request_url_text, headers_syntax, body_syntax = list(res)
+        assert request_url_text == "\n→ Request POST http://get_url.com?test=1"
 
         assert isinstance(headers_syntax, Syntax)
         assert headers_syntax.code == linesep.join([
@@ -197,9 +195,41 @@ def test_render_response_with_post_request_json():
         ])
         assert isinstance(headers_syntax.lexer, HttpLexer)
 
-        assert text_body == 'Request body:'
-
         assert isinstance(body_syntax, Syntax)
         assert body_syntax.code == '"{\\"id\\":1}"'
+        assert isinstance(body_syntax.lexer, JsonLexer)
+
+
+def test_render_response_with_patch_request_form_urlencoded():
+    with given:
+        request = BaseClient().build_request(
+            method='PATCH',
+            url='http://get_url.com',
+            params={'test': 1},
+            headers={'User-Agent': 'pytest'},
+            data={'id': 1}
+        )
+
+    with when:
+        res = render_request(request)
+
+    with then:
+        request_url_text, headers_syntax, body_syntax = list(res)
+        assert request_url_text == "\n→ Request PATCH http://get_url.com?test=1"
+
+        assert isinstance(headers_syntax, Syntax)
+        assert headers_syntax.code == linesep.join([
+            "host: get_url.com",
+            "accept: */*",
+            "accept-encoding: gzip, deflate",
+            "connection: keep-alive",
+            "user-agent: pytest",
+            "content-length: 4",
+            "content-type: application/x-www-form-urlencoded",
+        ])
+        assert isinstance(headers_syntax.lexer, HttpLexer)
+
+        assert isinstance(body_syntax, Syntax)
+        assert body_syntax.code == '{\n    "id": "1"\n}'
         assert isinstance(body_syntax.lexer, JsonLexer)
 
