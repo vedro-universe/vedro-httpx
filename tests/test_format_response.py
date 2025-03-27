@@ -164,7 +164,7 @@ def test_render_response_with_get_request():
             "host: get_url.com",
             "user-agent: pytest",
         ])
-        assert isinstance(headers_syntax.lexer, HttpLexer)
+        assert isinstance(headers_syntax.lexer, TextLexer)
 
 
 def test_render_response_with_post_request_json():
@@ -191,7 +191,7 @@ def test_render_response_with_post_request_json():
             "content-type: application/json",
             "content-length: 8"
         ])
-        assert isinstance(headers_syntax.lexer, HttpLexer)
+        assert isinstance(headers_syntax.lexer, TextLexer)
 
         assert isinstance(body_syntax, Syntax)
         assert body_syntax.code == '"{\\"id\\":1}"'
@@ -225,7 +225,7 @@ def test_render_response_with_patch_request_form_urlencoded():
             "content-length: 18",
             "content-type: application/x-www-form-urlencoded",
         ])
-        assert isinstance(headers_syntax.lexer, HttpLexer)
+        assert isinstance(headers_syntax.lexer, TextLexer)
 
         assert isinstance(body_syntax, Syntax)
         assert body_syntax.code == 'id=1\n&name=TestName'

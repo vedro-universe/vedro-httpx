@@ -3,7 +3,7 @@ from typing import List, Tuple
 
 from httpx._models import Headers, Request, Response
 from pygments.lexer import Lexer
-from pygments.lexers import HttpLexer
+from pygments.lexers import HttpLexer, TextLexer
 
 __all__ = ("format_request_headers", "format_response_headers")
 
@@ -25,7 +25,7 @@ def format_request_headers(request: Request) -> Tuple[str, Lexer]:
              HttpLexer instance.
     """
     lines = headers_lines(request.headers)
-    return os.linesep.join(lines), HttpLexer()
+    return os.linesep.join(lines), TextLexer()
 
 
 def format_response_headers(response: Response) -> Tuple[str, Lexer]:
