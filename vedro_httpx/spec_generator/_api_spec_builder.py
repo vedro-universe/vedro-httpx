@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Dict, List, Tuple
 from urllib.parse import urlparse
 
 import vedro_httpx.recorder.har as har
@@ -22,40 +22,44 @@ class APISpecBuilder:
         :param entries: A list of HAR entries containing HTTP request and response data.
         :return: A dictionary representing the API specification.
         """
-        urls = {self._get_url(entry["request"]) for entry in entries}
-        base_path = self._get_base_path(urls)
+        spec: Dict[str, Any] = {}
 
-        spec: Dict[str, Any] = {
-            base_path: {}
-        }
+        groups = self._group_entries_by_origin(entries)
+        for base_origin, group_entries in groups.items():
+            spec[base_origin] = {}
+            for entry in group_entries:
+                method, url = entry["request"]["method"], self._get_url(entry["request"])
+                path = url[len(base_origin):]
 
-        for entry in entries:
-            method, url = entry["request"]["method"], self._get_url(entry["request"])
-            path = url[len(base_path):]
+                route, details = self._create_route(method, path)
+                if route not in spec[base_origin]:
+                    spec[base_origin][route] = details
 
-            route, details = self._create_route(method, path)
-            if route not in spec[base_path]:
-                spec[base_path][route] = details
+                spec[base_origin][route]["total"] += 1
 
-            spec[base_path][route]["total"] += 1
+                params = entry["request"]["queryString"]
+                for param in params:
+                    name, value = param["name"], param["value"]
+                    if name not in spec[base_origin][route]["params"]:
+                        spec[base_origin][route]["params"][name] = {
+                            "requests": 0,
+                            "example": value
+                        }
+                    spec[base_origin][route]["params"][name]["requests"] += 1
 
-            params = entry["request"]["queryString"]
-            for param in params:
-                name, value = param["name"], param["value"]
-                if name not in spec[base_path][route]["params"]:
-                    spec[base_path][route]["params"][name] = {"requests": 0, "example": value}
-                spec[base_path][route]["params"][name]["requests"] += 1
+                headers = entry["request"]["headers"]
+                for header in headers:
+                    name, value = header["name"].lower(), header["value"]
+                    if name not in spec[base_origin][route]["headers"]:
+                        spec[base_origin][route]["headers"][name] = {
+                            "requests": 0,
+                            "example": value
+                        }
+                    spec[base_origin][route]["headers"][name]["requests"] += 1
 
-            headers = entry["request"]["headers"]
-            for header in headers:
-                name, value = header["name"].lower(), header["value"]
-                if name not in spec[base_path][route]["headers"]:
-                    spec[base_path][route]["headers"][name] = {"requests": 0, "example": value}
-                spec[base_path][route]["headers"][name]["requests"] += 1
-
-            response_status = entry["response"]["status"]
-            response_reason = entry["response"]["statusText"]
-            spec[base_path][route]["responses"][response_status] = response_reason
+                response_status = entry["response"]["status"]
+                response_reason = entry["response"]["statusText"]
+                spec[base_origin][route]["responses"][response_status] = response_reason
 
         return spec
 
@@ -84,20 +88,19 @@ class APISpecBuilder:
         parsed_url = urlparse(request.get("_parameterized_url", request["url"]))
         return f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}"
 
-    def _get_base_path(self, urls: Set[str]) -> str:
+    def _group_entries_by_origin(self, entries: List[har.Entry]) -> Dict[str, List[har.Entry]]:
         """
-        Determine the common base path from a set of URLs.
+        Group entries by their origin (scheme + netloc).
 
-        :param urls: A set of URLs from the HAR entries.
-        :return: The common base path shared by the URLs.
+        :param entries: A list of HAR entries.
+        :return: A dictionary mapping each origin to a list of corresponding entries.
         """
-        parts = [url.split("/") for url in urls]
-        common_path = []
-
-        for part in zip(*parts):
-            if all(p == part[0] for p in part):
-                common_path.append(part[0])
-            else:
-                break
-
-        return "/".join(common_path)
+        groups: Dict[str, List[har.Entry]] = {}
+        for entry in entries:
+            url = self._get_url(entry["request"])
+            parsed = urlparse(url)
+            origin = f"{parsed.scheme}://{parsed.netloc}"
+            if origin not in groups:
+                groups[origin] = []
+            groups[origin].append(entry)
+        return groups
