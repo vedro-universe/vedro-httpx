@@ -1,12 +1,8 @@
-import json
-from json import JSONDecodeError
-
-from httpx._status_codes import codes
-
 from httpx import Response as _Response
 from rich.console import Console, ConsoleOptions, RenderResult
 
-from ._render_response import render_request, render_response
+from ._render_request import render_request
+from ._render_response import render_response
 
 __all__ = ("Response",)
 
