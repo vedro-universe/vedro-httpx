@@ -1,6 +1,7 @@
 import json
 from typing import Any, Optional, Tuple, Union
 
+import rich
 from httpx import Response
 from pygments.lexer import Lexer
 from pygments.lexers import JsonLexer, TextLexer, get_lexer_for_mimetype

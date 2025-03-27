@@ -7,7 +7,7 @@ from pygments.lexers import HttpLexer, JsonLexer, TextLexer
 from rich.syntax import Syntax
 
 from vedro_httpx import Response
-from vedro_httpx._render_headers import format_response_headers
+from vedro_httpx._render_headers import HttpHeadersLexer, format_response_headers
 from vedro_httpx._render_request import render_request
 from vedro_httpx._render_response import format_response_body, render_response
 
@@ -164,7 +164,7 @@ def test_render_response_with_get_request():
             "host: get_url.com",
             "user-agent: pytest",
         ])
-        assert isinstance(headers_syntax.lexer, TextLexer)
+        assert isinstance(headers_syntax.lexer, HttpHeadersLexer)
 
 
 def test_render_response_with_post_request_json():
@@ -191,7 +191,7 @@ def test_render_response_with_post_request_json():
             "content-type: application/json",
             "content-length: 8"
         ])
-        assert isinstance(headers_syntax.lexer, TextLexer)
+        assert isinstance(headers_syntax.lexer, HttpHeadersLexer)
 
         assert isinstance(body_syntax, Syntax)
         assert body_syntax.code == '"{\\"id\\":1}"'
@@ -225,7 +225,7 @@ def test_render_response_with_patch_request_form_urlencoded():
             "content-length: 18",
             "content-type: application/x-www-form-urlencoded",
         ])
-        assert isinstance(headers_syntax.lexer, TextLexer)
+        assert isinstance(headers_syntax.lexer, HttpHeadersLexer)
 
         assert isinstance(body_syntax, Syntax)
         assert body_syntax.code == 'id=1\n&name=TestName'

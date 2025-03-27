@@ -3,7 +3,7 @@ from typing import List, Tuple
 
 from httpx._models import Headers, Request, Response
 from pygments.lexer import Lexer
-from pygments.lexers import HttpLexer, TextLexer
+from pygments.lexers import HttpLexer
 
 __all__ = ("format_request_headers", "format_response_headers")
 
@@ -15,6 +15,13 @@ def headers_lines(headers: Headers) -> List[str]:
             lines.append(f"{header}: {value}")
     return lines
 
+
+class HttpHeadersLexer(HttpLexer):
+    header_callback = HttpLexer.header_callback
+    tokens = {
+        'root': [(r'([^\s:]+)( *)(:)( *)([^\r\n]*)(\r?\n|\Z)', header_callback)],
+    }
+
 def format_request_headers(request: Request) -> Tuple[str, Lexer]:
     """
     Format the HTTP headers of a request and determine the appropriate lexer for syntax
@@ -25,7 +32,7 @@ def format_request_headers(request: Request) -> Tuple[str, Lexer]:
              HttpLexer instance.
     """
     lines = headers_lines(request.headers)
-    return os.linesep.join(lines), TextLexer()
+    return os.linesep.join(lines), HttpHeadersLexer()
 
 
 def format_response_headers(response: Response) -> Tuple[str, Lexer]:
