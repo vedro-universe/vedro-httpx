@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
 import vedro_httpx.recorder.har as har
@@ -15,21 +15,29 @@ class APISpecBuilder:
     documentation or testing.
     """
 
-    def build_spec(self, entries: List[har.Entry]) -> Dict[str, Any]:
+    def build_spec(self, entries: List[har.Entry],
+                   base_url: Optional[str] = None) -> Dict[str, Any]:
         """
         Build an API specification from the given HAR entries.
 
+        If a base_url is provided, only entries whose full URL starts with the base_url
+        are processed, and the specification is grouped under the base_url. Otherwise,
+        entries are grouped by their origin (scheme://netloc).
+
         :param entries: A list of HAR entries containing HTTP request and response data.
+        :param base_url: Optional base URL to filter and group entries.
         :return: A dictionary representing the API specification.
         """
         spec: Dict[str, Any] = {}
 
-        groups = self._group_entries_by_origin(entries)
+        groups = self._group_entries_by_origin(entries, base_url=base_url)
         for base_origin, group_entries in groups.items():
             spec[base_origin] = {}
             for entry in group_entries:
                 method, url = entry["request"]["method"], self._get_url(entry["request"])
                 path = url[len(base_origin):]
+                if path == "":
+                    path = "/"
 
                 route, details = self._create_route(method, path)
                 if route not in spec[base_origin]:
@@ -88,19 +96,35 @@ class APISpecBuilder:
         parsed_url = urlparse(request.get("_parameterized_url", request["url"]))
         return f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}"
 
-    def _group_entries_by_origin(self, entries: List[har.Entry]) -> Dict[str, List[har.Entry]]:
+    def _group_entries_by_origin(self, entries: List[har.Entry],
+                                 base_url: Optional[str] = None) -> Dict[str, List[har.Entry]]:
         """
-        Group entries by their origin (scheme + netloc).
+        Group HAR entries by their origin or by a specified base URL.
+
+        When a base URL is provided, only entries whose full URL starts with the base URL
+        are included, and they are grouped under the base URL key. Otherwise, entries are grouped
+        by their origin (scheme://netloc).
 
         :param entries: A list of HAR entries.
-        :return: A dictionary mapping each origin to a list of corresponding entries.
+        :param base_url: Optional base URL to filter and group entries.
+        :return: A dictionary mapping each origin or the provided base URL to a list of
+                 corresponding entries.
         """
+        if base_url:
+            base_url = base_url.rstrip("/")
+
         groups: Dict[str, List[har.Entry]] = {}
+
         for entry in entries:
             url = self._get_url(entry["request"])
             parsed = urlparse(url)
-            origin = f"{parsed.scheme}://{parsed.netloc}"
-            if origin not in groups:
-                groups[origin] = []
-            groups[origin].append(entry)
+            group_key = base_url if base_url else f"{parsed.scheme}://{parsed.netloc}"
+
+            if not url.startswith(group_key):
+                continue
+
+            if group_key not in groups:
+                groups[group_key] = []
+            groups[group_key].append(entry)
+
         return groups
