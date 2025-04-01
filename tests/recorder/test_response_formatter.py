@@ -178,13 +178,13 @@ def test_response_with_json_content(*, sync_formatter: SyncHARFormatter, respx_m
     with then:
         assert result == build_response(
             headers=[
-                {"name": "content-length", "value": "16"},
+                {"name": "content-length", "value": "15"},
                 {"name": "content-type", "value": "application/json"},
             ],
             content={
-                "size": 16,
+                "size": 15,
                 "mimeType": "application/json",
-                "text": '{"key": "value"}'
+                "text": '{"key":"value"}'
             }
         )
 

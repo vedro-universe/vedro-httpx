@@ -64,23 +64,23 @@ def test_sync_format_responses(*, sync_formatter: SyncHARFormatter, respx_mock: 
                         headers=[
                             {"name": "x-header1", "value": "value1"},
                             {"name": "x-header2", "value": "value2"},
-                            {"name": "content-length", "value": "36"},
+                            {"name": "content-length", "value": "33"},
                             {"name": "content-type", "value": "application/json"},
                         ],
                         postData={
                             "mimeType": "application/json",
-                            "text": '{"key1": "value1", "key2": "value2"}',
+                            "text": '{"key1":"value1","key2":"value2"}',
                         }
                     ),
                     "response": build_response(
                         headers=[
-                            {"name": "content-length", "value": "16"},
+                            {"name": "content-length", "value": "15"},
                             {"name": "content-type", "value": "application/json"},
                         ],
                         content={
                             "mimeType": "application/json",
-                            "size": 16,
-                            "text": '{"key": "value"}',
+                            "size": 15,
+                            "text": '{"key":"value"}',
                         },
                     ),
                     "cache": {},
@@ -134,23 +134,23 @@ async def test_async_format_responses(*, async_formatter: AsyncHARFormatter,
                         headers=[
                             {"name": "x-header1", "value": "value1"},
                             {"name": "x-header2", "value": "value2"},
-                            {"name": "content-length", "value": "36"},
+                            {"name": "content-length", "value": "33"},
                             {"name": "content-type", "value": "application/json"},
                         ],
                         postData={
                             "mimeType": "application/json",
-                            "text": '{"key1": "value1", "key2": "value2"}',
+                            "text": '{"key1":"value1","key2":"value2"}',
                         }
                     ),
                     "response": build_response(
                         headers=[
-                            {"name": "content-length", "value": "16"},
+                            {"name": "content-length", "value": "15"},
                             {"name": "content-type", "value": "application/json"},
                         ],
                         content={
                             "mimeType": "application/json",
-                            "size": 16,
-                            "text": '{"key": "value"}',
+                            "size": 15,
+                            "text": '{"key":"value"}',
                         },
                     ),
                     "cache": {},

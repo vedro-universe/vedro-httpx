@@ -144,12 +144,12 @@ def test_post_request_json_data(*, sync_formatter: SyncHARFormatter, respx_mock:
         assert result == build_request(
             method="POST",
             headers=[
-                {"name": "content-length", "value": "25"},
+                {"name": "content-length", "value": "22"},
                 {"name": "content-type", "value": "application/json"},
             ],
             postData={
                 "mimeType": "application/json",
-                "text": '{"id": 1, "name": "User"}'
+                "text": '{"id":1,"name":"User"}'
             }
         )
 
