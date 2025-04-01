@@ -88,7 +88,18 @@ class RequestRecorder:
         """
         log = self._har_builder.build_log(self._entries)
         har = self._har_builder.build_har(log)
-        file_path.write_text(json.dumps(har, indent=2, ensure_ascii=False))
+
+        try:
+            json_data = json.dumps(har, indent=2, ensure_ascii=False)
+        except (TypeError, ValueError) as exc:
+            # Catch issues with serializing to JSON (bad data types, etc.)
+            raise RuntimeError(f"Failed to serialize HAR data to JSON: {exc}") from exc
+
+        try:
+            file_path.write_text(json_data, encoding="utf-8", errors="backslashreplace")
+        except (OSError, UnicodeError) as exc:
+            # Catch file I/O errors (permissions, disk full, etc.) or encoding errors
+            raise RuntimeError(f"Failed to save HAR to {file_path}: {exc}") from exc
 
 
 _har_builder = HARBuilder("vedro-httpx", vedro_httpx_version)
