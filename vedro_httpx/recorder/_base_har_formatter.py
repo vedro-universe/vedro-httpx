@@ -217,7 +217,7 @@ class BaseHARFormatter:
         try:
             return value.decode(encoding)
         except UnicodeDecodeError:
-            return value.decode(encoding, errors="surrogateescape")
+            return value.decode(encoding, errors="backslashreplace")
 
     def _is_text_content(self, content_type: str) -> bool:
         """
