@@ -128,9 +128,7 @@ class AsyncHTTPInterface(vedro.Interface):
         :return: A `Response` object containing the server's response to the HTTP request.
         """
         if segments:
-            if extensions is None:
-                extensions = {}
-
+            extensions = {} if extensions is None else dict(extensions)
             parameterized_url = str(url)
             if self._base_url:
                 parameterized_url = str(self._base_url).lstrip("/") + parameterized_url
