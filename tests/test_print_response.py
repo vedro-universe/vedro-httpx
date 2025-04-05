@@ -42,7 +42,7 @@ def test_render_response_console(*, console: Console, buffer: StringIO):
 
     with then:
         assert buffer.getvalue() == linesep.join([
-            'Response:',
+            '← Response',
             '[94mHTTP[0m/[94m1.1[0m [94m200[0m [96mOK[0m',
             '[96mcontent-type[0m: application/json',
             f'[96mx-token[0m: {header_val}',
@@ -82,7 +82,7 @@ def test_render_response_console_width(*, console: Console, buffer: StringIO):
         body_len = width - len('│   "name": "') - 1
 
         assert output == linesep.join([
-            'Response:',
+            '← Response',
             '[94mHTTP[0m/[94m1.1[0m [94m200[0m [96mOK[0m',
             '[96mcontent-type[0m: application/json',
             f'[96mx-token[0m: {header_val[:header_len]}…',

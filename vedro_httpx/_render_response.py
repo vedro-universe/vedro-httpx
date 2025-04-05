@@ -1,15 +1,16 @@
-import json
-import os
 from typing import Any, Optional, Tuple, Union
 
 from httpx import Response
 from pygments.lexer import Lexer
-from pygments.lexers import HttpLexer, JsonLexer, TextLexer, get_lexer_for_mimetype
+from pygments.lexers import JsonLexer, TextLexer, get_lexer_for_mimetype
 from pygments.util import ClassNotFound
 from rich.console import RenderResult
 from rich.syntax import Syntax
 
-__all__ = ("render_response",)
+__all__ = ("render_response")
+
+from vedro_httpx._render_headers import format_response_headers
+from vedro_httpx._render_json import get_pretty_json
 
 
 def render_response(response: Response, *,
@@ -26,31 +27,13 @@ def render_response(response: Response, *,
     :param width: The maximum width for the code blocks. If not set, defaults to console width.
     :return: Yields formatted rich syntax objects for headers and body.
     """
-    yield "Response:"
+    yield "← Response"
     headers, http_lexer = format_response_headers(response)
     yield Syntax(headers, http_lexer, theme=theme, word_wrap=True, code_width=width)
 
     body, lexer = format_response_body(response)
     yield Syntax(body, lexer,
                  theme=theme, word_wrap=True, indent_guides=True, code_width=width)
-
-
-def format_response_headers(response: Response) -> Tuple[str, Lexer]:
-    """
-    Format the HTTP headers of a response and determine the appropriate lexer for syntax
-    highlighting.
-
-    :param response: The HTTP response object whose headers are to be formatted.
-    :return: A tuple containing the formatted headers as a string and the corresponding
-             HttpLexer instance.
-    """
-    lines = [f"{response.http_version} {response.status_code} {response.reason_phrase}"]
-    for header in response.headers:
-        values = response.headers.get_list(header)
-        for value in values:
-            lines.append(f"{header}: {value}")
-
-    return os.linesep.join(lines), HttpLexer()
 
 
 def format_response_body(response: Response) -> Tuple[Any, Union[Lexer, str]]:
@@ -70,13 +53,13 @@ def format_response_body(response: Response) -> Tuple[Any, Union[Lexer, str]]:
     try:
         lexer = get_lexer_for_mimetype(mime_type.strip())
     except ClassNotFound:
-        preview = response.content[:10]
-        return f"<binary preview={preview!r} len={len(response.content)}>", ""
+        code = f"<binary preview={response.content[:10]!r} len={len(response.content)}>"
+        return code, TextLexer()
 
     code = response.text
     if isinstance(lexer, JsonLexer):
         try:
-            code = json.dumps(response.json(), indent=4)
+            code = get_pretty_json(response.json())
         except Exception:
             return code, TextLexer()
     return code, lexer
