@@ -1,7 +1,5 @@
-import json
 from typing import Any, Optional, Tuple, Union
 
-import rich
 from httpx import Response
 from pygments.lexer import Lexer
 from pygments.lexers import JsonLexer, TextLexer, get_lexer_for_mimetype
@@ -12,6 +10,7 @@ from rich.syntax import Syntax
 __all__ = ("render_response")
 
 from vedro_httpx._render_headers import format_response_headers
+from vedro_httpx._render_json import get_pretty_json
 
 
 def render_response(response: Response, *,
@@ -54,13 +53,13 @@ def format_response_body(response: Response) -> Tuple[Any, Union[Lexer, str]]:
     try:
         lexer = get_lexer_for_mimetype(mime_type.strip())
     except ClassNotFound:
-        preview = response.content[:10]
-        return f"<binary preview={preview!r} len={len(response.content)}>", ""
+        code = f"<binary preview={response.content[:10]!r} len={len(response.content)}>"
+        return code, TextLexer()
 
     code = response.text
     if isinstance(lexer, JsonLexer):
         try:
-            code = json.dumps(response.json(), indent=4, ensure_ascii=False)
+            code = get_pretty_json(response.json())
         except Exception:
             return code, TextLexer()
     return code, lexer

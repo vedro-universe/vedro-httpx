@@ -54,7 +54,7 @@ def test_format_response_no_body():
 
     with then:
         assert code == "<binary preview=b'' len=0>"
-        assert lexer == ""
+        assert isinstance(lexer, TextLexer)
 
 
 def test_format_response_no_content_type():
@@ -67,7 +67,7 @@ def test_format_response_no_content_type():
 
     with then:
         assert code == f"<binary preview={body[:10]} len={len(body)}>"
-        assert lexer == ""
+        assert isinstance(lexer, TextLexer)
 
 
 def test_format_response_text():
@@ -157,7 +157,7 @@ def test_render_response_with_get_request():
     with then:
         request_url_text, headers_syntax = list(res)
 
-        assert request_url_text == "\n→ Request GET http://get_url.com?test=1"
+        assert request_url_text == "→ Request GET http://get_url.com?test=1"
 
         assert isinstance(headers_syntax, Syntax)
         assert headers_syntax.code == linesep.join([
@@ -182,7 +182,7 @@ def test_render_response_with_post_request_json():
 
     with then:
         request_url_text, headers_syntax, body_syntax = list(res)
-        assert request_url_text == "\n→ Request POST http://get_url.com?test=1"
+        assert request_url_text == "→ Request POST http://get_url.com?test=1"
 
         assert isinstance(headers_syntax, Syntax)
         assert headers_syntax.code == linesep.join([
@@ -213,7 +213,7 @@ def test_render_response_with_patch_request_form_urlencoded():
 
     with then:
         request_url_text, headers_syntax, body_syntax = list(res)
-        assert request_url_text == "\n→ Request PATCH http://get_url.com?test=1"
+        assert request_url_text == "→ Request PATCH http://get_url.com?test=1"
 
         assert isinstance(headers_syntax, Syntax)
         assert headers_syntax.code == linesep.join([
@@ -228,6 +228,5 @@ def test_render_response_with_patch_request_form_urlencoded():
         assert isinstance(headers_syntax.lexer, HttpHeadersLexer)
 
         assert isinstance(body_syntax, Syntax)
-        assert body_syntax.code == 'id=1\n&name=TestName'
-        assert isinstance(body_syntax.lexer, TextLexer)
-
+        assert body_syntax.code == '{\n    "id": "1",\n    "name": "TestName"\n}'
+        assert isinstance(body_syntax.lexer, JsonLexer)
