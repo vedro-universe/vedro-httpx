@@ -22,7 +22,7 @@ __all__ = ("ResponseRenderer",)
 
 class ResponseRenderer:
     def __init__(self, *,
-                 include_request: bool = True,
+                 include_request: bool = False,
                  include_request_body: bool = False,
                  ) -> None:
         self._include_request = include_request
@@ -40,11 +40,11 @@ class ResponseRenderer:
         """
         if self._include_request and response._request:
             # httpx does not provide the HTTP version of the request
-            yield from self._render_request(response.request,
-                                            width=width, http_version=response.http_version)
-        yield from self._render_response(response, width=width)
+            yield from self.render_request(response.request,
+                                           width=width, http_version=response.http_version)
+        yield from self.render_response(response, width=width)
 
-    def _render_response(self, response: Response, *, width: int = 80) -> RenderResult:
+    def render_response(self, response: Response, *, width: int = 80) -> RenderResult:
         """
         Yield formatted sections of an HTTP response for rendering in a rich console.
 
@@ -57,31 +57,18 @@ class ResponseRenderer:
         :return: Yields formatted rich syntax objects for headers and body.
         """
         yield "← Response"
-        headers, http_lexer = self._format_response_headers(response)
+        headers, http_lexer = self.format_response_headers(response)
         yield self._create_syntax(headers, http_lexer, width)
 
-        body, lexer = self._format_response_body(response)
+        body, lexer = self.format_response_body(response)
         yield self._create_syntax(body, lexer, width, indent_guides=True)
 
-    def _create_syntax(self, code: str, lexer: Union[Lexer, str], code_width: int,
-                       **kwargs: Any) -> Syntax:
-        return Syntax(code, lexer,
-                      theme=self._syntax_theme, word_wrap=True, code_width=code_width, **kwargs)
-
-    def _format_response_headers(self, response: Response) -> Tuple[str, Lexer]:
+    def format_response_headers(self, response: Response) -> Tuple[str, Lexer]:
         lines = [f"{response.http_version} {response.status_code} {response.reason_phrase}"]
         lines.extend(self._format_header_lines(response.headers))
         return os.linesep.join(lines), HttpLexer()
 
-    def _format_header_lines(self, headers: Headers) -> List[str]:
-        lines = []
-        for header in headers:
-            values = headers.get_list(header)
-            for value in values:
-                lines.append(f"{header}: {value}")
-        return lines
-
-    def _format_response_body(self, response: Response) -> Tuple[Any, Union[Lexer, str]]:
+    def format_response_body(self, response: Response) -> Tuple[Any, Union[Lexer, str]]:
         content_type = response.headers.get("Content-Type", "")
         mime_type, encoding = self._extract_mime_type(content_type)
 
@@ -98,6 +85,23 @@ class ResponseRenderer:
             except:  # noqa: E722
                 return code, TextLexer()
         return code, lexer
+
+    def render_request(self, request: Request, *,
+                       width: int = 80, http_version: str = "HTTP/1.1") -> RenderResult:
+        yield "→ Request"
+        headers, http_lexer = self._format_request_headers(request, http_version=http_version)
+        yield self._create_syntax(headers, http_lexer, width)
+
+        if self._include_request_body:
+            if request.read():
+                body, lexer = self._format_request_body(request)
+                yield self._create_syntax(body, lexer, width, indent_guides=True)
+
+    def _format_request_headers(self, request: Request, http_version: str) -> Tuple[str, Lexer]:
+        url = str(request.url)
+        lines = [f"{request.method} {url} {http_version}"]
+        lines.extend(self._format_header_lines(request.headers))
+        return os.linesep.join(lines), HttpLexer()
 
     def _decode(self, value: bytes, encoding: str = "utf-8") -> str:
         """
@@ -136,23 +140,6 @@ class ResponseRenderer:
             formatted.append(f"{key}={unquote(value, errors='replace')}")
         return f"&{os.linesep}".join(formatted)
 
-    def _render_request(self, request: Request, *,
-                        width: int = 80, http_version: str = "HTTP/1.1") -> RenderResult:
-        yield "→ Request"
-        headers, http_lexer = self._format_request_headers(request, http_version=http_version)
-        yield self._create_syntax(headers, http_lexer, width)
-
-        if self._include_request_body:
-            if request.read():
-                body, lexer = self._format_request_body(request)
-                yield self._create_syntax(body, lexer, width, indent_guides=True)
-
-    def _format_request_headers(self, request: Request, http_version: str) -> Tuple[str, Lexer]:
-        url = str(request.url)
-        lines = [f"{request.method} {url} {http_version}"]
-        lines.extend(self._format_header_lines(request.headers))
-        return os.linesep.join(lines), HttpLexer()
-
     def _format_request_body(self, request: Request) -> Tuple[Any, Union[Lexer, str]]:
         content_type = request.headers.get("Content-Type", "")
         mime_type, encoding = self._extract_mime_type(content_type)
@@ -177,3 +164,16 @@ class ResponseRenderer:
                 return code, TextLexer()
 
         return code, lexer
+
+    def _format_header_lines(self, headers: Headers) -> List[str]:
+        lines = []
+        for header in headers:
+            values = headers.get_list(header)
+            for value in values:
+                lines.append(f"{header}: {value}")
+        return lines
+
+    def _create_syntax(self, code: str, lexer: Union[Lexer, str], code_width: int,
+                       **kwargs: Any) -> Syntax:
+        return Syntax(code, lexer,
+                      theme=self._syntax_theme, word_wrap=True, code_width=code_width, **kwargs)
