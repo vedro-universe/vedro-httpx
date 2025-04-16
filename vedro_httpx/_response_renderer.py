@@ -27,7 +27,7 @@ class ResponseRenderer:
                  include_response_body: bool = True,
                  body_binary_preview_size: int = 10,
                  body_json_indent: int = 4,
-                 body_max_length: int = 1_024,
+                 body_max_length: int = 4_096,
                  syntax_theme: str = "ansi_dark"
                  ) -> None:
         self._include_request = include_request

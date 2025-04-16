@@ -82,6 +82,6 @@ class VedroHTTPX(PluginConfig):
         include_response_body=True,
         body_binary_preview_size=10,
         body_json_indent=4,
-        body_max_length=1_024,
+        body_max_length=4_096,
         syntax_theme="ansi_dark",
     )
