@@ -1,8 +1,7 @@
 from httpx import Response as _Response
 from rich.console import Console, ConsoleOptions, RenderResult
 
-from ._render_request import render_request
-from ._render_response import render_response
+from ._response_renderer import ResponseRenderer
 
 __all__ = ("Response",)
 
@@ -13,6 +12,9 @@ class Response(_Response):
     This class uses the rich library's capabilities to format HTTP response objects visually
     when output to a console supporting rich text formatting.
     """
+
+    # Default renderer (can be overridden at runtime)
+    __rich_renderer__: ResponseRenderer = ResponseRenderer()
 
     def __rich_console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
         """
@@ -29,6 +31,4 @@ class Response(_Response):
         # are the same, then a specific width limit has been set and we use options.max_width.
         # If not, we use a large default width of 1024^2 (which practically means no width limit).
         width = options.max_width if options.min_width == options.max_width else 1024 ** 2
-        if self._request:
-            yield from render_request(self.request, width=width)
-        yield from render_response(self, width=width)
+        yield from self.__rich_renderer__.render(self, width=width)
