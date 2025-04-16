@@ -79,4 +79,9 @@ class VedroHTTPX(PluginConfig):
     response_renderer: ResponseRenderer = ResponseRenderer(
         include_request=False,
         include_request_body=False,
+        include_response_body=True,
+        body_binary_preview_size=10,
+        body_json_indent=4,
+        body_max_length=1_024,
+        syntax_theme="ansi_dark",
     )

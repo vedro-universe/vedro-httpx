@@ -24,11 +24,19 @@ class ResponseRenderer:
     def __init__(self, *,
                  include_request: bool = False,
                  include_request_body: bool = False,
+                 include_response_body: bool = True,
+                 body_binary_preview_size: int = 10,
+                 body_json_indent: int = 4,
+                 body_max_length: int = 1_024,
+                 syntax_theme: str = "ansi_dark"
                  ) -> None:
         self._include_request = include_request
         self._include_request_body = include_request_body
-        self._binary_preview_size = 10
-        self._syntax_theme = "ansi_dark"
+        self._include_response_body = include_response_body
+        self._body_binary_preview_size = body_binary_preview_size
+        self._body_json_indent = body_json_indent
+        self._body_max_length = body_max_length
+        self._syntax_theme = syntax_theme
 
     def render(self, response: Response, *, width: int) -> RenderResult:
         """
@@ -60,8 +68,9 @@ class ResponseRenderer:
         headers, http_lexer = self.format_response_headers(response)
         yield self._create_syntax(headers, http_lexer, width)
 
-        body, lexer = self.format_response_body(response)
-        yield self._create_syntax(body, lexer, width, indent_guides=True)
+        if self._include_response_body:
+            body, lexer = self.format_response_body(response)
+            yield self._create_syntax(body, lexer, width, indent_guides=True)
 
     def format_response_headers(self, response: Response) -> Tuple[str, Lexer]:
         lines = [f"{response.http_version} {response.status_code} {response.reason_phrase}"]
@@ -75,7 +84,7 @@ class ResponseRenderer:
         try:
             lexer = get_lexer_for_mimetype(mime_type.strip())
         except ClassNotFound:
-            preview = response.content[:self._binary_preview_size]
+            preview = response.content[:self._body_binary_preview_size]
             return f"<binary preview={preview!r} len={len(response.content)}>", TextLexer()
 
         code = self._decode(response.content, encoding)
@@ -83,8 +92,8 @@ class ResponseRenderer:
             try:
                 code = self._format_json(code)
             except:  # noqa: E722
-                return code, TextLexer()
-        return code, lexer
+                return self._maybe_truncate(code), TextLexer()
+        return self._maybe_truncate(code), lexer
 
     def render_request(self, request: Request, *,
                        width: int = 80, http_version: str = "HTTP/1.1") -> RenderResult:
@@ -131,7 +140,7 @@ class ResponseRenderer:
         return mime_type.strip(), encoding
 
     def _format_json(self, content: str) -> str:
-        return json.dumps(json.loads(content), indent=4, ensure_ascii=False, sort_keys=False)
+        return json.dumps(json.loads(content), indent=self._body_json_indent, ensure_ascii=False)
 
     def _format_urlencoded(self, content: str) -> str:
         form_data = parse_qsl(content, keep_blank_values=True, errors="replace")
@@ -147,7 +156,7 @@ class ResponseRenderer:
         try:
             lexer = get_lexer_for_mimetype(mime_type.strip())
         except ClassNotFound:
-            preview = request.content[:self._binary_preview_size]
+            preview = request.content[:self._body_binary_preview_size]
             return f"<binary preview={preview!r} len={len(request.content)}>", TextLexer()
 
         code = self._decode(request.content, encoding)
@@ -156,14 +165,14 @@ class ResponseRenderer:
             try:
                 code = self._format_json(code)
             except:  # noqa: E722
-                return code, TextLexer()
+                return self._maybe_truncate(code), TextLexer()
         elif isinstance(lexer, UrlEncodedLexer):
             try:
                 code = self._format_urlencoded(code)
             except:  # noqa: E722
-                return code, TextLexer()
+                return self._maybe_truncate(code), TextLexer()
 
-        return code, lexer
+        return self._maybe_truncate(code), lexer
 
     def _format_header_lines(self, headers: Headers) -> List[str]:
         lines = []
@@ -177,3 +186,10 @@ class ResponseRenderer:
                        **kwargs: Any) -> Syntax:
         return Syntax(code, lexer,
                       theme=self._syntax_theme, word_wrap=True, code_width=code_width, **kwargs)
+
+    def _maybe_truncate(self, text: Union[str, bytes]) -> Union[str, bytes]:
+        if len(text) <= self._body_max_length:
+            return text
+        if isinstance(text, bytes):
+            return text[:self._body_max_length]
+        return text[:self._body_max_length] + f"… [truncated to {self._body_max_length} chars]"
