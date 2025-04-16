@@ -1,19 +1,24 @@
+import json
 from os import linesep
 
 import pytest
 from baby_steps import given, then, when
 from httpx import Request
-from httpx._client import BaseClient
 from pygments.lexers import HttpLexer, JsonLexer, TextLexer, UrlEncodedLexer
 from rich.syntax import Syntax
 
-from vedro_httpx import Response
-from vedro_httpx._response_renderer import ResponseRenderer
+from vedro_httpx import Response, ResponseRenderer
 
 
 @pytest.fixture()
 def response_renderer() -> ResponseRenderer:
-    return ResponseRenderer(include_request_body=True)
+    return ResponseRenderer(
+        include_request=True,
+        include_request_body=True,
+    )
+
+
+# Render Response
 
 
 def test_format_response_no_headers(response_renderer):
@@ -21,7 +26,7 @@ def test_format_response_no_headers(response_renderer):
         response = Response(status_code=200)
 
     with when:
-        code, lexer = response_renderer._format_response_headers(response)
+        code, lexer = response_renderer.format_response_headers(response)
 
     with then:
         assert code == "HTTP/1.1 200 OK"
@@ -37,7 +42,7 @@ def test_format_response_headers(response_renderer):
         ])
 
     with when:
-        code, lexer = response_renderer._format_response_headers(response)
+        code, lexer = response_renderer.format_response_headers(response)
 
     with then:
         assert code == linesep.join([
@@ -54,7 +59,7 @@ def test_format_response_no_body(response_renderer):
         response = Response(status_code=200)
 
     with when:
-        code, lexer = response_renderer._format_response_body(response)
+        code, lexer = response_renderer.format_response_body(response)
 
     with then:
         assert code == "<binary preview=b'' len=0>"
@@ -67,7 +72,7 @@ def test_format_response_no_content_type(response_renderer):
         response = Response(status_code=200, content=body)
 
     with when:
-        code, lexer = response_renderer._format_response_body(response)
+        code, lexer = response_renderer.format_response_body(response)
 
     with then:
         assert code == f"<binary preview={body[:10]} len={len(body)}>"
@@ -82,7 +87,7 @@ def test_format_response_text(response_renderer):
         })
 
     with when:
-        code, lexer = response_renderer._format_response_body(response)
+        code, lexer = response_renderer.format_response_body(response)
 
     with then:
         assert code == "Hello, world!"
@@ -97,7 +102,7 @@ def test_format_response_json(response_renderer):
         })
 
     with when:
-        code, lexer = response_renderer._format_response_body(response)
+        code, lexer = response_renderer.format_response_body(response)
 
     with then:
         assert code == '{\n    "id": 1\n}'
@@ -112,7 +117,7 @@ def test_format_response_invalid_json(response_renderer):
         })
 
     with when:
-        code, lexer = response_renderer._format_response_body(response)
+        code, lexer = response_renderer.format_response_body(response)
 
     with then:
         assert code == '{"id"}'
@@ -127,7 +132,7 @@ def test_render_response(response_renderer):
         })
 
     with when:
-        res = response_renderer._render_response(response)
+        res = response_renderer.render_response(response)
 
     with then:
         text, http_syntax, json_syntax = list(res)
@@ -146,92 +151,157 @@ def test_render_response(response_renderer):
         assert isinstance(json_syntax.lexer, JsonLexer)
 
 
-def test_render_response_with_get_request(response_renderer):
+# Render Request
+
+
+def test_render_request_get_with_params_and_headers(response_renderer):
     with given:
         request = Request(
-            method='GET',
-            url='http://get_url.com',
-            params={'test': 1},
-            headers={'User-Agent': 'pytest'},
+            method="GET",
+            url="http://localhost:8000/search",
+            params=[
+                ("q", "test"),
+                ("category", "books"),
+                ("category", "electronics"),
+            ],
+            headers=[
+                ("X-Trace-Id", "test"),
+                ("Accept", "text/html"),
+                ("Accept", "text/plain"),
+            ],
         )
 
     with when:
-        res = response_renderer._render_request(request)
+        res = response_renderer.render_request(request)
 
     with then:
         text, headers_syntax = list(res)
 
         assert text == "→ Request"
+
         assert isinstance(headers_syntax, Syntax)
         assert headers_syntax.code == linesep.join([
-            "GET http://get_url.com?test=1 HTTP/1.1",
-            "host: get_url.com",
-            "user-agent: pytest",
+            "GET http://localhost:8000/search?q=test&category=books&category=electronics HTTP/1.1",
+            "host: localhost:8000",
+            "x-trace-id: test",
+            "accept: text/html",
+            "accept: text/plain",
         ])
 
 
-def test_render_response_with_post_request_json(response_renderer):
+def test_render_request_post_no_body(response_renderer):
     with given:
         request = Request(
-            method='POST',
-            url='http://get_url.com',
-            params={'test': 1},
-            headers={'User-Agent': 'pytest', 'Content-Type': 'application/json'},
-            json={'id': 1}
+            method="POST",
+            url="http://localhost:8000",
         )
 
     with when:
-        res = response_renderer._render_request(request)
+        res = response_renderer.render_request(request)
 
     with then:
-        text, headers_syntax, body_syntax = list(res)
+        text, headers_syntax = list(res)
 
         assert text == "→ Request"
 
         assert isinstance(headers_syntax, Syntax)
         assert headers_syntax.code == linesep.join([
-            "POST http://get_url.com?test=1 HTTP/1.1",
-            "host: get_url.com",
-            "user-agent: pytest",
-            "content-type: application/json",
-            "content-length: 8"
+            "POST http://localhost:8000 HTTP/1.1",
+            "host: localhost:8000",
+            "content-length: 0",
         ])
 
-        assert isinstance(body_syntax, Syntax)
-        assert body_syntax.code == '{\n    "id": 1\n}'
-        assert isinstance(body_syntax.lexer, JsonLexer)
 
-
-def test_render_response_with_patch_request_form_urlencoded(response_renderer):
+def test_render_request_post_binary_body(response_renderer):
     with given:
-        request = BaseClient().build_request(
-            method='PATCH',
-            url='http://get_url.com',
-            params={'test': 1},
-            headers={'User-Agent': 'pytest'},
-            data={'id': 1, 'name': 'TestName'}
+        body = b"Hello, world!"
+        request = Request(
+            method="POST",
+            url="http://localhost:8000",
+            content=body,
         )
 
     with when:
-        res = response_renderer._render_request(request)
+        res = response_renderer.render_request(request)
 
     with then:
-        text, headers_syntax, body_syntax = list(res)
+        text, headers_syntax, binary_syntax = list(res)
 
         assert text == "→ Request"
 
         assert isinstance(headers_syntax, Syntax)
         assert headers_syntax.code == linesep.join([
-            "PATCH http://get_url.com?test=1 HTTP/1.1",
-            "host: get_url.com",
-            "accept: */*",
-            "accept-encoding: gzip, deflate",
-            "connection: keep-alive",
-            "user-agent: pytest",
-            "content-length: 18",
+            "POST http://localhost:8000 HTTP/1.1",
+            "host: localhost:8000",
+            "content-length: 13",
+        ])
+
+        assert isinstance(binary_syntax, Syntax)
+        assert binary_syntax.code == f"<binary preview={body[:10]} len={len(body)}>"
+
+
+def test_render_request_post_json_body(response_renderer):
+    with given:
+        body = {"id": 1}
+        request = Request(
+            method="POST",
+            url="http://localhost:8000",
+            json=body,
+        )
+
+    with when:
+        res = response_renderer.render_request(request)
+
+    with then:
+        text, headers_syntax, json_syntax = list(res)
+
+        assert text == "→ Request"
+
+        assert isinstance(headers_syntax, Syntax)
+        assert headers_syntax.code == linesep.join([
+            "POST http://localhost:8000 HTTP/1.1",
+            "host: localhost:8000",
+            "content-length: 8",
+            "content-type: application/json",
+        ])
+
+        assert isinstance(json_syntax, Syntax)
+        assert isinstance(json_syntax.lexer, JsonLexer)
+        assert json_syntax.code == json.dumps(body, indent=4)
+
+
+def test_render_request_post_urlencoded_body(response_renderer):
+    with given:
+        body = {
+            "username": "test",
+            "tag": ["test1", "test2"],
+        }
+        request = Request(
+            method="POST",
+            url="http://localhost:8000",
+            data=body,
+        )
+
+    with when:
+        res = response_renderer.render_request(request)
+
+    with then:
+        text, headers_syntax, urlencoded_syntax = list(res)
+
+        assert text == "→ Request"
+
+        assert isinstance(headers_syntax, Syntax)
+        assert headers_syntax.code == linesep.join([
+            "POST http://localhost:8000 HTTP/1.1",
+            "host: localhost:8000",
+            "content-length: 33",
             "content-type: application/x-www-form-urlencoded",
         ])
 
-        assert isinstance(body_syntax, Syntax)
-        assert body_syntax.code == 'id=1&\nname=TestName'
-        assert isinstance(body_syntax.lexer, UrlEncodedLexer)
+        assert isinstance(urlencoded_syntax, Syntax)
+        assert isinstance(urlencoded_syntax.lexer, UrlEncodedLexer)
+        assert urlencoded_syntax.code == linesep.join([
+            "username=test&",
+            "tag=test1&",
+            "tag=test2",
+        ])
