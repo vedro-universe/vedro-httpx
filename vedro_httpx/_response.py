@@ -13,6 +13,9 @@ class Response(_Response):
     when output to a console supporting rich text formatting.
     """
 
+    # Default renderer (can be overridden at runtime)
+    __rich_renderer__: ResponseRenderer = ResponseRenderer()
+
     def __rich_console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
         """
         Define how this HTTP response is rendered within the rich console.
@@ -28,6 +31,4 @@ class Response(_Response):
         # are the same, then a specific width limit has been set and we use options.max_width.
         # If not, we use a large default width of 1024^2 (which practically means no width limit).
         width = options.max_width if options.min_width == options.max_width else 1024 ** 2
-
-        response_renderer = ResponseRenderer(include_request_body=True)
-        yield from response_renderer.render(self, width=width)
+        yield from self.__rich_renderer__.render(self, width=width)

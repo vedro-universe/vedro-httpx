@@ -21,7 +21,10 @@ __all__ = ("ResponseRenderer",)
 
 
 class ResponseRenderer:
-    def __init__(self, *, include_request: bool = True, include_request_body: bool = False) -> None:
+    def __init__(self, *,
+                 include_request: bool = True,
+                 include_request_body: bool = False,
+                 ) -> None:
         self._include_request = include_request
         self._include_request_body = include_request_body
         self._binary_preview_size = 10
@@ -37,7 +40,8 @@ class ResponseRenderer:
         """
         if self._include_request and response._request:
             # httpx does not provide the HTTP version of the request
-            yield from self._render_request(response.request, width=width, http_version=response.http_version)
+            yield from self._render_request(response.request,
+                                            width=width, http_version=response.http_version)
         yield from self._render_response(response, width=width)
 
     def _render_response(self, response: Response, *, width: int = 80) -> RenderResult:
@@ -54,12 +58,13 @@ class ResponseRenderer:
         """
         yield "← Response"
         headers, http_lexer = self._format_response_headers(response)
-        yield self._render_syntax(headers, http_lexer, width)
+        yield self._create_syntax(headers, http_lexer, width)
 
         body, lexer = self._format_response_body(response)
-        yield self._render_syntax(body, lexer, width, indent_guides=True)
+        yield self._create_syntax(body, lexer, width, indent_guides=True)
 
-    def _render_syntax(self, code: str, lexer: Union[Lexer, str], code_width: int, **kwargs: Any) -> Syntax:
+    def _create_syntax(self, code: str, lexer: Union[Lexer, str], code_width: int,
+                       **kwargs: Any) -> Syntax:
         return Syntax(code, lexer,
                       theme=self._syntax_theme, word_wrap=True, code_width=code_width, **kwargs)
 
@@ -105,7 +110,10 @@ class ResponseRenderer:
         try:
             return value.decode(encoding)
         except UnicodeDecodeError:
-            return value.decode(encoding, errors="replace")
+            try:
+                return value.decode(encoding, errors="replace")
+            except LookupError:
+                return value.decode("utf-8", errors="replace")
 
     def _extract_mime_type(self, content_type: str, encoding: str = "utf-8") -> Tuple[str, str]:
         mime_type, *params = content_type.split(";")
@@ -122,21 +130,22 @@ class ResponseRenderer:
         return json.dumps(json.loads(content), indent=4, ensure_ascii=False, sort_keys=False)
 
     def _format_urlencoded(self, content: str) -> str:
-        form_data = parse_qsl(content, errors="replace")
+        form_data = parse_qsl(content, keep_blank_values=True, errors="replace")
         formatted = []
         for key, value in form_data:
             formatted.append(f"{key}={unquote(value, errors='replace')}")
         return f"&{os.linesep}".join(formatted)
 
-    def _render_request(self, request: Request, *, width: int = 80, http_version: str = "HTTP/1.1") -> RenderResult:
+    def _render_request(self, request: Request, *,
+                        width: int = 80, http_version: str = "HTTP/1.1") -> RenderResult:
         yield "→ Request"
         headers, http_lexer = self._format_request_headers(request, http_version=http_version)
-        yield self._render_syntax(headers, http_lexer, width)
+        yield self._create_syntax(headers, http_lexer, width)
 
         if self._include_request_body:
             if request.read():
                 body, lexer = self._format_request_body(request)
-                yield self._render_syntax(body, lexer, width, indent_guides=True)
+                yield self._create_syntax(body, lexer, width, indent_guides=True)
 
     def _format_request_headers(self, request: Request, http_version: str) -> Tuple[str, Lexer]:
         url = str(request.url)

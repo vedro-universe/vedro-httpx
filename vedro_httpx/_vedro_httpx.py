@@ -13,6 +13,9 @@ from vedro.events import (
 from vedro_httpx.recorder import RequestRecorder
 from vedro_httpx.recorder import request_recorder as default_request_recorder
 
+from ._response import Response
+from ._response_renderer import ResponseRenderer
+
 __all__ = ("VedroHTTPX", "VedroHTTPXPlugin",)
 
 
@@ -23,6 +26,7 @@ class VedroHTTPXPlugin(Plugin):
         self._request_recorder = request_recorder
         self._record_requests = config.record_requests
         self._requests_artifact_name = config.requests_artifact_name
+        self._response_renderer = config.response_renderer
 
     def subscribe(self, dispatcher: Dispatcher) -> None:
         dispatcher.listen(ArgParseEvent, self.on_arg_parse) \
@@ -42,6 +46,10 @@ class VedroHTTPXPlugin(Plugin):
         self._record_requests = event.args.httpx_record_requests
         if self._record_requests:
             self._request_recorder.enable()
+
+        if not isinstance(self._response_renderer, ResponseRenderer):
+            raise TypeError("response_renderer must be an instance of ResponseRenderer")
+        setattr(Response, "__rich_renderer__", self._response_renderer)
 
     async def on_scenario_run(self, event: ScenarioRunEvent) -> None:
         if self._record_requests:
@@ -67,3 +75,8 @@ class VedroHTTPX(PluginConfig):
 
     # Artifact file name for recorded HTTP requests
     requests_artifact_name: str = "httpx-requests.har"
+
+    response_renderer: ResponseRenderer = ResponseRenderer(
+        include_request=False,
+        include_request_body=False,
+    )
