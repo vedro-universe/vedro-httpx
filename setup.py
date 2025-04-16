@@ -13,7 +13,7 @@ def find_dev_required():
 
 setup(
     name="vedro-httpx",
-    version="0.6.0",
+    version="0.7.0",
     description="Vedro + HTTPX",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
