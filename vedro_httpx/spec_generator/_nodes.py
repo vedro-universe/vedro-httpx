@@ -1,19 +1,28 @@
 from abc import ABC
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypeVar, cast
 
 if TYPE_CHECKING:
     from ._visitors import NodeVisitor
 
-
-__all__ = ("Node", "BoolNode", "NoneNode", "IntNode", "FloatNode", "StrNode",
-           "DictNode", "ListNode", "UnionNode",)
-
 T = TypeVar("T")
 
+__all__ = (
+    "Node",
+    "BoolNode",
+    "NoneNode",
+    "IntNode",
+    "FloatNode",
+    "StrNode",
+    "DictNode",
+    "ListNode",
+    "UnionNode",
+)
 
+
+@dataclass
 class Node(ABC):
-    def __init__(self, count: int = 1, **kwargs: Any) -> None:
-        self.count = count
+    count: int = 1
 
     def accept(self, visitor: "NodeVisitor[T]", **kwargs: Any) -> T:
         kind = self.__class__.__name__[:-4].lower()
@@ -21,51 +30,45 @@ class Node(ABC):
         return cast(T, method(self, **kwargs))
 
 
+@dataclass
 class BoolNode(Node):
     pass
 
 
+@dataclass
 class NoneNode(Node):
     pass
 
 
+@dataclass
 class IntNode(Node):
-    def __init__(self, count: int = 1, min_value: Optional[int] = None,
-                 max_value: Optional[int] = None) -> None:
-        super().__init__(count)
-        self.min_value = min_value
-        self.max_value = max_value
+    min_value: Optional[int] = None
+    max_value: Optional[int] = None
 
 
+@dataclass
 class FloatNode(Node):
-    def __init__(self, count: int = 1, min_value: Optional[float] = None,
-                 max_value: Optional[float] = None) -> None:
-        super().__init__(count)
-        self.min_value = min_value
-        self.max_value = max_value
+    min_value: Optional[float] = None
+    max_value: Optional[float] = None
 
 
+@dataclass
 class StrNode(Node):
     pass
 
 
+@dataclass
 class DictNode(Node):
-    def __init__(self, count: int = 1, keys: Optional[Dict[str, Node]] = None) -> None:
-        super().__init__(count)
-        self.keys: Dict[str, Node] = keys or {}
+    keys: Dict[str, Node] = field(default_factory=dict)
 
 
-class UnionNode(Node):
-    def __init__(self, count: int = 1, types: Optional[List[Node]] = None) -> None:
-        super().__init__(count)
-        self.types: List[Node] = types or []
-
-
+@dataclass
 class ListNode(Node):
-    def __init__(self, count: int = 1, element_type: Optional[Node] = None,
-                 min_length: Optional[int] = None,
-                 max_length: Optional[int] = None) -> None:
-        super().__init__(count)
-        self.element_type = element_type
-        self.min_length = min_length
-        self.max_length = max_length
+    element_type: Optional[Node] = None
+    min_length: Optional[int] = None
+    max_length: Optional[int] = None
+
+
+@dataclass
+class UnionNode(Node):
+    types: List[Node] = field(default_factory=list)
