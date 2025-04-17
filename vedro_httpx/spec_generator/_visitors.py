@@ -271,6 +271,10 @@ def node_from_value(value: Any) -> Node:
 
 
 class JsonSchemaVisitor(NodeVisitor[Dict[str, Any]]):
+    def __init__(self, *, include_constraints: bool = True) -> None:
+        super().__init__()
+        self.include_constraints = include_constraints
+
     def visit_none(self, node: NoneNode, **kwargs: Any) -> Dict[str, Any]:
         return {"type": "null"}
 
@@ -279,18 +283,20 @@ class JsonSchemaVisitor(NodeVisitor[Dict[str, Any]]):
 
     def visit_int(self, node: IntNode, **kwargs: Any) -> Dict[str, Any]:
         schema: Dict[str, Any] = {"type": "integer"}
-        if node.min_value is not None:
-            schema["minimum"] = node.min_value
-        if node.max_value is not None:
-            schema["maximum"] = node.max_value
+        if self.include_constraints:
+            if node.min_value is not None:
+                schema["minimum"] = node.min_value
+            if node.max_value is not None:
+                schema["maximum"] = node.max_value
         return schema
 
     def visit_float(self, node: FloatNode, **kwargs: Any) -> Dict[str, Any]:
         schema: Dict[str, Any] = {"type": "number"}
-        if node.min_value is not None:
-            schema["minimum"] = node.min_value
-        if node.max_value is not None:
-            schema["maximum"] = node.max_value
+        if self.include_constraints:
+            if node.min_value is not None:
+                schema["minimum"] = node.min_value
+            if node.max_value is not None:
+                schema["maximum"] = node.max_value
         return schema
 
     def visit_str(self, node: StrNode, **kwargs: Any) -> Dict[str, Any]:
@@ -312,10 +318,11 @@ class JsonSchemaVisitor(NodeVisitor[Dict[str, Any]]):
     def visit_list(self, node: ListNode, **kwargs: Any) -> Dict[str, Any]:
         items_schema = node.element_type.accept(self) if node.element_type else {}
         schema: Dict[str, Any] = {"type": "array", "items": items_schema}
-        if node.min_length is not None:
-            schema["minItems"] = node.min_length
-        if node.max_length is not None:
-            schema["maxItems"] = node.max_length
+        if self.include_constraints:
+            if node.min_length is not None:
+                schema["minItems"] = node.min_length
+            if node.max_length is not None:
+                schema["maxItems"] = node.max_length
         return schema
 
     def visit_union(self, node: UnionNode, **kwargs: Any) -> Dict[str, Any]:
@@ -323,6 +330,6 @@ class JsonSchemaVisitor(NodeVisitor[Dict[str, Any]]):
         return {"anyOf": any_of}
 
 
-def to_json_schema(node: Node) -> Dict[str, Any]:
-    visitor = JsonSchemaVisitor()
+def to_json_schema(node: Node, *, include_constraints: bool = True) -> Dict[str, Any]:
+    visitor = JsonSchemaVisitor(include_constraints=include_constraints)
     return node.accept(visitor)
