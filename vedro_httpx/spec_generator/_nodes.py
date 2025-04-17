@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from abc import ABC
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypeVar, cast
 
@@ -17,7 +15,7 @@ class Node(ABC):
     def __init__(self, count: int = 1, **kwargs: Any) -> None:
         self.count = count
 
-    def accept(self, visitor: NodeVisitor[T], **kwargs: Any) -> T:
+    def accept(self, visitor: "NodeVisitor[T]", **kwargs: Any) -> T:
         kind = self.__class__.__name__[:-4].lower()
         method = getattr(visitor, f"visit_{kind}")
         return cast(T, method(self, **kwargs))
