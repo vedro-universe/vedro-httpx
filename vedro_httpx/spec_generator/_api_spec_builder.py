@@ -4,7 +4,7 @@ from urllib.parse import parse_qs, urlparse
 
 import vedro_httpx.recorder.har as har
 
-from ._visitors import merge_nodes, node_from_value
+from .model._merger import merge_nodes, node_from_value
 
 __all__ = ("APISpecBuilder",)
 
@@ -14,12 +14,21 @@ class APISpecBuilder:
     Builds a structured API specification from a list of HAR entries.
 
     This class processes HTTP request and response data from HAR entries,
-    organizing them into an API specification format suitable for further
-    documentation or testing.
+    organizing them into an API specification format. It aggregates headers,
+    parameters, request bodies, and responses to form a comprehensive structure
+    suitable for documentation or testing.
     """
 
     def build_spec(self, entries: List[har.Entry],
                    base_url: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Build an API specification from a list of HAR entries.
+
+        :param entries: A list of HAR entries containing request and response data.
+        :param base_url: Optional base URL to group entries by. If provided, only entries
+                         starting with this base URL are included.
+        :return: A dictionary mapping base URLs or origins to endpoint specifications.
+        """
         spec: Dict[str, Any] = {}
         groups = self._group_entries_by_origin(entries, base_url)
         for origin, group_entries in groups.items():
@@ -31,6 +40,13 @@ class APISpecBuilder:
 
     def _process_entry(self, origin_spec: Dict[Tuple[str, str], Dict[str, Any]],
                        entry: har.Entry, origin: str) -> None:
+        """
+        Process a single HAR entry and update the specification data.
+
+        :param origin_spec: A dictionary storing the endpoint details per (method, path).
+        :param entry: The HAR entry containing request and response information.
+        :param origin: The origin or base URL for this entry.
+        """
         method = entry["request"]["method"]
         url = self._get_url(entry["request"])
         path = url[len(origin):] or "/"
@@ -48,6 +64,11 @@ class APISpecBuilder:
         self._aggregate_response_body(details, entry["response"])
 
     def _init_route_details(self) -> Dict[str, Any]:
+        """
+        Initialize the structure for an API route's specification details.
+
+        :return: A dictionary with initialized keys for headers, params, body, and responses.
+        """
         return {
             "total": 0,
             "headers": {},
@@ -60,18 +81,36 @@ class APISpecBuilder:
         }
 
     def _aggregate_params(self, details: Dict[str, Any], params: List[har.QueryParam]) -> None:
+        """
+        Aggregate query parameter data from the request into the API spec.
+
+        :param details: The current details dictionary for the route.
+        :param params: A list of query parameters from the HAR entry.
+        """
         for param in params:
             name, value = param["name"], param["value"]
             stats = details["params"].setdefault(name, {"requests": 0, "example": value})
             stats["requests"] += 1
 
     def _aggregate_headers(self, details: Dict[str, Any], headers: List[har.Header]) -> None:
+        """
+        Aggregate header data from the request into the API spec.
+
+        :param details: The current details dictionary for the route.
+        :param headers: A list of headers from the HAR entry.
+        """
         for header in headers:
             name, value = header["name"].lower(), header["value"]
             stats = details["headers"].setdefault(name, {"requests": 0, "example": value})
             stats["requests"] += 1
 
     def _aggregate_request_body(self, details: Dict[str, Any], request: har.Request) -> None:
+        """
+        Aggregate request body data into the API spec.
+
+        :param details: The current details dictionary for the route.
+        :param request: The request object from the HAR entry.
+        """
         if "postData" not in request:
             return
 
@@ -96,6 +135,12 @@ class APISpecBuilder:
             entry["payload"] = merge_nodes(entry["payload"], node_from_value(raw))
 
     def _aggregate_response_body(self, details: Dict[str, Any], response: har.Response) -> None:
+        """
+        Aggregate response body data into the API spec.
+
+        :param details: The current details dictionary for the route.
+        :param response: The response object from the HAR entry.
+        """
         status = response["status"]
         resp = details["responses"].setdefault(status, {
             "requests": 0,
@@ -116,6 +161,12 @@ class APISpecBuilder:
             resp["body"] = node_from_value(body)
 
     def _extract_json_body(self, data: Union[har.PostData, har.Content]) -> Any:
+        """
+        Extract and parse JSON body content from HAR data.
+
+        :param data: A HAR postData or content object.
+        :return: The parsed JSON object, or None if parsing fails.
+        """
         text = data.get("text", "")
         try:
             return json.loads(text)
@@ -123,6 +174,12 @@ class APISpecBuilder:
             return None
 
     def _extract_form_body(self, data: har.PostData) -> Any:
+        """
+        Extract and parse form-encoded body content.
+
+        :param data: A HAR postData object containing URL-encoded form data.
+        :return: A dictionary representing the parsed form data, or None on failure.
+        """
         text = data.get("text", "")
         try:
             raw = parse_qs(text, keep_blank_values=True)

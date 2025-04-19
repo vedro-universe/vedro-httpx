@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Sequence
 import yaml
 
 from ._utils import humanize_identifier
-from ._visitors import to_json_schema
+from .model._json_schema import to_json_schema
 
 __all__ = ("OpenAPISpecGenerator",)
 
@@ -23,9 +23,10 @@ class OpenAPISpecGenerator:
     """
     Generates an OpenAPI specification from API request and response data.
 
-    This class provides methods to generate an OpenAPI specification based on
-    API request methods, parameters, headers, and response codes, excluding
-    standard headers like 'accept' or 'content-type' by default.
+    This class transforms structured API specifications (usually generated
+    from HAR entries) into a YAML-formatted OpenAPI 3.0 specification.
+    It excludes common standard headers by default, and includes support
+    for parameters, request bodies, and responses.
     """
 
     def __init__(self, *, standard_headers: Sequence[str] = STANDARD_HEADERS) -> None:
@@ -53,9 +54,21 @@ class OpenAPISpecGenerator:
         return yaml.dump(spec, sort_keys=False, allow_unicode=True)
 
     def _build_servers(self, api_spec: Dict[str, Any]) -> List[Dict[str, str]]:
+        """
+        Build the 'servers' section of the OpenAPI document.
+
+        :param api_spec: A dictionary of the API specification grouped by base URL.
+        :return: A list of server objects, each containing a 'url' key.
+        """
         return [{"url": url} for url in api_spec.keys()]
 
     def _build_paths(self, api_spec: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Build the 'paths' section of the OpenAPI document.
+
+        :param api_spec: A dictionary of the API specification grouped by base URL.
+        :return: A dictionary representing all paths and methods in the API.
+        """
         paths: Dict[str, Any] = {}
         for base_path, methods in api_spec.items():
             for (method, route), details in methods.items():
@@ -65,6 +78,14 @@ class OpenAPISpecGenerator:
         return paths
 
     def _create_operation(self, method: str, path: str, details: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Create an operation object for a specific HTTP method and route.
+
+        :param method: The HTTP method (e.g., 'GET', 'POST').
+        :param path: The route path of the endpoint.
+        :param details: A dictionary of request/response details for this route.
+        :return: A dictionary representing the OpenAPI operation object.
+        """
         operation: Dict[str, Any] = {
             "summary": f"Endpoint for {method} {path}",
             "operationId": self._get_operation_id(method, path),
@@ -119,6 +140,12 @@ class OpenAPISpecGenerator:
         return headers
 
     def _build_request_body(self, details: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Build the requestBody section for an operation.
+
+        :param details: A dictionary containing body payloads and content types.
+        :return: A dictionary representing the OpenAPI requestBody object.
+        """
         body = details["body"]
         if body["requests"] == 0:
             return {}
