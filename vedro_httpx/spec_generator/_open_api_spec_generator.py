@@ -3,8 +3,10 @@ from typing import Any, Dict, List, Sequence
 import yaml
 
 from ._utils import humanize_identifier
+from ._visitors import to_json_schema
 
 __all__ = ("OpenAPISpecGenerator",)
+
 
 STANDARD_HEADERS = (
     "host",
@@ -56,12 +58,26 @@ class OpenAPISpecGenerator:
             for (method, path), details in methods.items():
                 if path not in openapi_spec["paths"]:
                     openapi_spec["paths"][path] = {}  # type: ignore
+
                 openapi_spec["paths"][path][method.lower()] = {  # type: ignore
                     "summary": f"Endpoint for {method} {path}",
                     "operationId": self._get_operation_id(method, path),
                     "parameters": self._build_params(details) + self._build_headers(details),
-                    "responses": self._build_responses(details),
                 }
+                if details["body"] is not None:
+                    openapi_spec["paths"][path][method.lower()]["requestBody"] = {  # type: ignore
+                        "description": "Request body (JSON)",
+                        "required": details["body"]["requests"] == details["total"],
+                        "content": {
+                            "application/json": {
+                                "schema": to_json_schema(details["body"]["payload"])
+                            }
+                        }
+                    }
+
+                openapi_spec["paths"][path][method.lower()]["responses"] = (  # type: ignore
+                    self._build_responses(details)
+                )
 
         return yaml.dump(openapi_spec, sort_keys=False, allow_unicode=True)
 
@@ -128,8 +144,14 @@ class OpenAPISpecGenerator:
         :return: A dictionary mapping HTTP status codes to response descriptions.
         """
         responses = {}
-        for response_status, response_reason in details["responses"].items():
+        for response_status, response_info in details["responses"].items():
             responses[str(response_status)] = {
-                "description": response_reason
+                "description": response_info["reason"],
             }
+            if response_info["body"] is not None:
+                responses[str(response_status)]["content"] = {
+                    "application/json": {
+                        "schema": to_json_schema(response_info["body"])
+                    }
+                }
         return responses

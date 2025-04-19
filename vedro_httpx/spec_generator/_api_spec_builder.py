@@ -1,7 +1,10 @@
-from typing import Any, Dict, List, Optional, Tuple
+import json
+from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import urlparse
 
 import vedro_httpx.recorder.har as har
+
+from ._visitors import merge_nodes, node_from_value
 
 __all__ = ("APISpecBuilder",)
 
@@ -65,11 +68,58 @@ class APISpecBuilder:
                         }
                     spec[base_origin][route]["headers"][name]["requests"] += 1
 
+                request_body = self._extract_request_body(entry["request"])
+                if request_body is not None:
+                    if spec[base_origin][route]["body"] is None:
+                        spec[base_origin][route]["body"] = {
+                            "requests": 1,
+                            "payload": node_from_value(request_body)
+                        }
+                    else:
+                        spec[base_origin][route]["body"]["requests"] += 1
+                        spec[base_origin][route]["body"]["payload"] = merge_nodes(
+                            spec[base_origin][route]["body"]["payload"],
+                            node_from_value(request_body)
+                        )
+
                 response_status = entry["response"]["status"]
                 response_reason = entry["response"]["statusText"]
-                spec[base_origin][route]["responses"][response_status] = response_reason
+                response_body = self._extract_response_body(entry["response"])
+
+                if response_status not in spec[base_origin][route]["responses"]:
+                    spec[base_origin][route]["responses"][response_status] = {
+                        "requests": 1,
+                        "reason": response_reason,
+                        "body": (node_from_value(response_body)
+                                 if (response_body is not None)
+                                 else None),
+                    }
+                else:
+                    cur_response = spec[base_origin][route]["responses"][response_status]
+                    cur_response["requests"] += 1
+                    if (cur_response["body"] is not None) and (response_body is not None):
+                        cur_response["body"] = merge_nodes(
+                            cur_response["body"],
+                            node_from_value(response_body)
+                        )
 
         return spec
+
+    def _extract_request_body(self, request: har.Request) -> Union[Any, None]:
+        if "postData" in request:
+            mime_type = request["postData"].get("mimeType", "")
+            if mime_type.lower().startswith("application/json"):
+                text = request["postData"].get("text", "")
+                return json.loads(text) if text else None
+        return None
+
+    def _extract_response_body(self, response: har.Response) -> Union[Any, None]:
+        if "content" in response:
+            mime_type = response["content"].get("mimeType", "")
+            if mime_type.lower().startswith("application/json"):
+                text = response["content"].get("text", "")
+                return json.loads(text) if text else None
+        return None
 
     def _create_route(self, method: str, path: str) -> Tuple[Tuple[str, str], Dict[str, Any]]:
         """
@@ -83,6 +133,7 @@ class APISpecBuilder:
             "total": 0,
             "headers": {},
             "params": {},
+            "body": None,
             "responses": {},
         }
 
