@@ -4,7 +4,7 @@ from urllib.parse import parse_qs, urlparse
 
 import vedro_httpx.recorder.har as har
 
-from .model._merger import merge_nodes, node_from_value
+from .model import merge_nodes, node_from_value
 
 __all__ = ("APISpecBuilder",)
 

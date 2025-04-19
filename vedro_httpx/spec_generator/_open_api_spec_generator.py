@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Sequence
 import yaml
 
 from ._utils import humanize_identifier
-from .model._json_schema import to_json_schema
+from .model import to_json_schema
 
 __all__ = ("OpenAPISpecGenerator",)
 
