@@ -48,6 +48,8 @@ class ResponseRenderer:
         :param body_json_indent: Number of spaces to use for JSON indentation.
         :param body_max_length: Maximum character length of body content to display.
         :param syntax_theme: Name of the syntax highlighting theme to use.
+            Possible values can be found in the Rich documentation:
+            https://rich.readthedocs.io/en/latest/syntax.html#theme
         """
         self._include_request = include_request
         self._include_request_body = include_request_body
