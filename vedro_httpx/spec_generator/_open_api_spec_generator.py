@@ -3,8 +3,10 @@ from typing import Any, Dict, List, Sequence
 import yaml
 
 from ._utils import humanize_identifier
+from .model import to_json_schema
 
 __all__ = ("OpenAPISpecGenerator",)
+
 
 STANDARD_HEADERS = (
     "host",
@@ -21,19 +23,23 @@ class OpenAPISpecGenerator:
     """
     Generates an OpenAPI specification from API request and response data.
 
-    This class provides methods to generate an OpenAPI specification based on
-    API request methods, parameters, headers, and response codes, excluding
-    standard headers like 'accept' or 'content-type' by default.
+    This class transforms structured API specifications (usually generated
+    from HAR entries) into a YAML-formatted OpenAPI 3.0 specification.
+    It excludes common standard headers by default, and includes support
+    for parameters, request bodies, and responses.
     """
 
-    def __init__(self, *, standard_headers: Sequence[str] = STANDARD_HEADERS) -> None:
+    def __init__(self, *, standard_headers: Sequence[str] = STANDARD_HEADERS,
+                 include_constraints: bool = True) -> None:
         """
         Initialize the OpenAPISpecGenerator with standard headers to be excluded.
 
         :param standard_headers: A sequence of headers to be excluded from the spec,
                                  defaults to standard headers like 'accept' and 'content-type'.
+        :param include_constraints: if False, omit `minimum`/`maximum` etc. from schemas
         """
         self._standard_headers = set(standard_headers)
+        self._include_constraints = include_constraints
 
     def generate_spec(self, api_spec: Dict[str, Any]) -> str:
         """
@@ -42,41 +48,57 @@ class OpenAPISpecGenerator:
         :param api_spec: A dictionary containing the API's base paths, methods, and details.
         :return: The generated OpenAPI specification in YAML format.
         """
-        openapi_spec = {
+        spec = {
             "openapi": "3.0.0",
-            "info": {
-                "title": "API",
-                "version": "1.0.0"
-            },
-            "servers": [{"url": url} for url in api_spec.keys()],
-            "paths": {}
+            "info": {"title": "API", "version": "1.0.0"},
+            "servers": self._build_servers(api_spec),
+            "paths": self._build_paths(api_spec),
         }
+        return yaml.dump(spec, sort_keys=False, allow_unicode=True)
 
+    def _build_servers(self, api_spec: Dict[str, Any]) -> List[Dict[str, str]]:
+        """
+        Build the 'servers' section of the OpenAPI document.
+
+        :param api_spec: A dictionary of the API specification grouped by base URL.
+        :return: A list of server objects, each containing a 'url' key.
+        """
+        return [{"url": url} for url in api_spec.keys()]
+
+    def _build_paths(self, api_spec: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Build the 'paths' section of the OpenAPI document.
+
+        :param api_spec: A dictionary of the API specification grouped by base URL.
+        :return: A dictionary representing all paths and methods in the API.
+        """
+        paths: Dict[str, Any] = {}
         for base_path, methods in api_spec.items():
-            for (method, path), details in methods.items():
-                if path not in openapi_spec["paths"]:
-                    openapi_spec["paths"][path] = {}  # type: ignore
-                openapi_spec["paths"][path][method.lower()] = {  # type: ignore
-                    "summary": f"Endpoint for {method} {path}",
-                    "operationId": self._get_operation_id(method, path),
-                    "parameters": self._build_params(details) + self._build_headers(details),
-                    "responses": self._build_responses(details),
-                }
+            for (method, route), details in methods.items():
+                path_item = paths.setdefault(route, {})
+                operation = self._create_operation(method, route, details)
+                path_item[method.lower()] = operation
+        return paths
 
-        return yaml.dump(openapi_spec, sort_keys=False, allow_unicode=True)
-
-    def _get_operation_id(self, method: str, path: str) -> str:
+    def _create_operation(self, method: str, path: str, details: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Generate a unique operation ID for an API method and path.
+        Create an operation object for a specific HTTP method and route.
 
-        :param method: The HTTP method (e.g., GET, POST).
-        :param path: The API endpoint path.
-        :return: A unique operation ID string.
+        :param method: The HTTP method (e.g., 'GET', 'POST').
+        :param path: The route path of the endpoint.
+        :param details: A dictionary of request/response details for this route.
+        :return: A dictionary representing the OpenAPI operation object.
         """
-        replacements = {"/": "_", "{": "", "}": ""}
-        for old, new in replacements.items():
-            path = path.replace(old, new)
-        return method.lower() + "_" + path.strip("_")
+        operation: Dict[str, Any] = {
+            "summary": f"Endpoint for {method} {path}",
+            "operationId": self._get_operation_id(method, path),
+            "parameters": self._build_params(details) + self._build_headers(details),
+        }
+        request_body = self._build_request_body(details)
+        if request_body:
+            operation["requestBody"] = request_body
+        operation["responses"] = self._build_responses(details)
+        return operation
 
     def _build_params(self, details: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
@@ -120,6 +142,29 @@ class OpenAPISpecGenerator:
             })
         return headers
 
+    def _build_request_body(self, details: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Build the requestBody section for an operation.
+
+        :param details: A dictionary containing body payloads and content types.
+        :return: A dictionary representing the OpenAPI requestBody object.
+        """
+        body = details["body"]
+        if body["requests"] == 0:
+            return {}
+
+        content: Dict[str, Any] = {}
+        for mime, info in body["content"].items():
+            schema = to_json_schema(info["payload"],
+                                    include_constraints=self._include_constraints)
+            content[mime] = {"schema": schema}
+
+        return {
+            "description": "Request body",
+            "required": body["requests"] == details["total"],
+            "content": content
+        }
+
     def _build_responses(self, details: Dict[str, Any]) -> Dict[str, Dict[str, str]]:
         """
         Build the responses section of the OpenAPI spec.
@@ -128,8 +173,27 @@ class OpenAPISpecGenerator:
         :return: A dictionary mapping HTTP status codes to response descriptions.
         """
         responses = {}
-        for response_status, response_reason in details["responses"].items():
-            responses[str(response_status)] = {
-                "description": response_reason
-            }
+        for status, info in details["responses"].items():
+            response = {"description": info["reason"]}
+            if info["body"] is not None:
+                response["content"] = {
+                    "application/json": {
+                        "schema": to_json_schema(info["body"],
+                                                 include_constraints=self._include_constraints)
+                    }
+                }
+            responses[str(status)] = response
         return responses
+
+    def _get_operation_id(self, method: str, path: str) -> str:
+        """
+        Generate a unique operation ID for an API method and path.
+
+        :param method: The HTTP method (e.g., GET, POST).
+        :param path: The API endpoint path.
+        :return: A unique operation ID string.
+        """
+        replacements = {"/": "_", "{": "", "}": ""}
+        for old, new in replacements.items():
+            path = path.replace(old, new)
+        return method.lower() + "_" + path.strip("_")

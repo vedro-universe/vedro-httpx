@@ -19,6 +19,7 @@ def buffer() -> StringIO:
 def console(buffer: StringIO) -> Console:
     console = make_console()
     console.file = buffer
+    console.width = 120
     return console
 
 
@@ -57,7 +58,7 @@ def test_render_response_console(*, console: Console, buffer: StringIO):
 
 def test_render_response_console_width(*, console: Console, buffer: StringIO):
     with given:
-        width = 80
+        width = 40
         header_val, body_val = "x" * 100, "y" * 100
         response = Response(
             status_code=200,
