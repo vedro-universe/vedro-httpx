@@ -1,6 +1,6 @@
 import json
 from typing import Any, Dict, List, Optional, Tuple, Union
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 import vedro_httpx.recorder.har as har
 
@@ -52,7 +52,10 @@ class APISpecBuilder:
             "total": 0,
             "headers": {},
             "params": {},
-            "body": {"requests": 0, "payload": None},
+            "body": {
+                "requests": 0,
+                "content": {},
+            },
             "responses": {},
         }
 
@@ -71,19 +74,26 @@ class APISpecBuilder:
     def _aggregate_request_body(self, details: Dict[str, Any], request: har.Request) -> None:
         if "postData" not in request:
             return
-        body = self._extract_json_body(request["postData"])
-        if body is None:
+
+        post = request["postData"]
+        mime = post["mimeType"].lower()
+
+        raw = None
+        if mime.startswith("application/json"):
+            raw = self._extract_json_body(post)
+        elif mime.startswith("application/x-www-form-urlencoded"):
+            raw = self._extract_form_body(post)
+        if raw is None:
             return
 
         details["body"]["requests"] += 1
+        entry = details["body"]["content"].setdefault(mime, {"requests": 0, "payload": None})
+        entry["requests"] += 1
 
-        if details["body"]["payload"] is not None:
-            details["body"]["payload"] = merge_nodes(
-                details["body"]["payload"],
-                node_from_value(body)
-            )
+        if entry["payload"] is None:
+            entry["payload"] = node_from_value(raw)
         else:
-            details["body"]["payload"] = node_from_value(body)
+            entry["payload"] = merge_nodes(entry["payload"], node_from_value(raw))
 
     def _aggregate_response_body(self, details: Dict[str, Any], response: har.Response) -> None:
         status = response["status"]
@@ -107,10 +117,18 @@ class APISpecBuilder:
 
     def _extract_json_body(self, data: Union[har.PostData, har.Content]) -> Any:
         text = data.get("text", "")
-        mime = data.get("mimeType", "").lower()
-        if mime.startswith("application/json") and text:
+        try:
             return json.loads(text)
-        return None
+        except:  # noqa: E722
+            return None
+
+    def _extract_form_body(self, data: har.PostData) -> Any:
+        text = data.get("text", "")
+        try:
+            raw = parse_qs(text, keep_blank_values=True)
+            return {k: v if len(v) > 1 else v[0] for k, v in raw.items()}
+        except:  # noqa: E722
+            return None
 
     def _get_url(self, request: har.Request) -> str:
         """
