@@ -20,122 +20,97 @@ class APISpecBuilder:
 
     def build_spec(self, entries: List[har.Entry],
                    base_url: Optional[str] = None) -> Dict[str, Any]:
-        """
-        Build an API specification from the given HAR entries.
-
-        If a base_url is provided, only entries whose full URL starts with the base_url
-        are processed, and the specification is grouped under the base_url. Otherwise,
-        entries are grouped by their origin (scheme://netloc).
-
-        :param entries: A list of HAR entries containing HTTP request and response data.
-        :param base_url: Optional base URL to filter and group entries.
-        :return: A dictionary representing the API specification.
-        """
         spec: Dict[str, Any] = {}
-
-        groups = self._group_entries_by_origin(entries, base_url=base_url)
-        for base_origin, group_entries in groups.items():
-            spec[base_origin] = {}
+        groups = self._group_entries_by_origin(entries, base_url)
+        for origin, group_entries in groups.items():
+            origin_spec: Dict[Tuple[str, str], Dict[str, Any]] = {}
             for entry in group_entries:
-                method, url = entry["request"]["method"], self._get_url(entry["request"])
-                path = url[len(base_origin):]
-                if path == "":
-                    path = "/"
-
-                route, details = self._create_route(method, path)
-                if route not in spec[base_origin]:
-                    spec[base_origin][route] = details
-
-                spec[base_origin][route]["total"] += 1
-
-                params = entry["request"]["queryString"]
-                for param in params:
-                    name, value = param["name"], param["value"]
-                    if name not in spec[base_origin][route]["params"]:
-                        spec[base_origin][route]["params"][name] = {
-                            "requests": 0,
-                            "example": value
-                        }
-                    spec[base_origin][route]["params"][name]["requests"] += 1
-
-                headers = entry["request"]["headers"]
-                for header in headers:
-                    name, value = header["name"].lower(), header["value"]
-                    if name not in spec[base_origin][route]["headers"]:
-                        spec[base_origin][route]["headers"][name] = {
-                            "requests": 0,
-                            "example": value
-                        }
-                    spec[base_origin][route]["headers"][name]["requests"] += 1
-
-                request_body = self._extract_request_body(entry["request"])
-                if request_body is not None:
-                    if spec[base_origin][route]["body"] is None:
-                        spec[base_origin][route]["body"] = {
-                            "requests": 1,
-                            "payload": node_from_value(request_body)
-                        }
-                    else:
-                        spec[base_origin][route]["body"]["requests"] += 1
-                        spec[base_origin][route]["body"]["payload"] = merge_nodes(
-                            spec[base_origin][route]["body"]["payload"],
-                            node_from_value(request_body)
-                        )
-
-                response_status = entry["response"]["status"]
-                response_reason = entry["response"]["statusText"]
-                response_body = self._extract_response_body(entry["response"])
-
-                if response_status not in spec[base_origin][route]["responses"]:
-                    spec[base_origin][route]["responses"][response_status] = {
-                        "requests": 1,
-                        "reason": response_reason,
-                        "body": (node_from_value(response_body)
-                                 if (response_body is not None)
-                                 else None),
-                    }
-                else:
-                    cur_response = spec[base_origin][route]["responses"][response_status]
-                    cur_response["requests"] += 1
-                    if (cur_response["body"] is not None) and (response_body is not None):
-                        cur_response["body"] = merge_nodes(
-                            cur_response["body"],
-                            node_from_value(response_body)
-                        )
-
+                self._process_entry(origin_spec, entry, origin)
+            spec[origin] = origin_spec
         return spec
 
-    def _extract_request_body(self, request: har.Request) -> Union[Any, None]:
-        if "postData" in request:
-            mime_type = request["postData"].get("mimeType", "")
-            if mime_type.lower().startswith("application/json"):
-                text = request["postData"].get("text", "")
-                return json.loads(text) if text else None
-        return None
+    def _process_entry(self, origin_spec: Dict[Tuple[str, str], Dict[str, Any]],
+                       entry: har.Entry, origin: str) -> None:
+        method = entry["request"]["method"]
+        url = self._get_url(entry["request"])
+        path = url[len(origin):] or "/"
 
-    def _extract_response_body(self, response: har.Response) -> Union[Any, None]:
-        if "content" in response:
-            mime_type = response["content"].get("mimeType", "")
-            if mime_type.lower().startswith("application/json"):
-                text = response["content"].get("text", "")
-                return json.loads(text) if text else None
-        return None
+        key = (method, path)
+        if key not in origin_spec:
+            origin_spec[key] = self._init_route_details()
 
-    def _create_route(self, method: str, path: str) -> Tuple[Tuple[str, str], Dict[str, Any]]:
-        """
-        Create a route dictionary for an API method and path.
+        details = origin_spec[key]
+        details["total"] += 1
 
-        :param method: The HTTP method (e.g., GET, POST).
-        :param path: The API endpoint path.
-        :return: A tuple containing the method-path tuple and the route details dictionary.
-        """
-        return (method, path), {
+        self._aggregate_params(details, entry["request"]["queryString"])
+        self._aggregate_headers(details, entry["request"]["headers"])
+        self._aggregate_request_body(details, entry["request"])
+        self._aggregate_response_body(details, entry["response"])
+
+    def _init_route_details(self) -> Dict[str, Any]:
+        return {
             "total": 0,
             "headers": {},
             "params": {},
-            "body": None,
+            "body": {"requests": 0, "payload": None},
             "responses": {},
         }
+
+    def _aggregate_params(self, details: Dict[str, Any], params: List[har.QueryParam]) -> None:
+        for param in params:
+            name, value = param["name"], param["value"]
+            stats = details["params"].setdefault(name, {"requests": 0, "example": value})
+            stats["requests"] += 1
+
+    def _aggregate_headers(self, details: Dict[str, Any], headers: List[har.Header]) -> None:
+        for header in headers:
+            name, value = header["name"].lower(), header["value"]
+            stats = details["headers"].setdefault(name, {"requests": 0, "example": value})
+            stats["requests"] += 1
+
+    def _aggregate_request_body(self, details: Dict[str, Any], request: har.Request) -> None:
+        if "postData" not in request:
+            return
+        body = self._extract_json_body(request["postData"])
+        if body is None:
+            return
+
+        details["body"]["requests"] += 1
+
+        if details["body"]["payload"] is not None:
+            details["body"]["payload"] = merge_nodes(
+                details["body"]["payload"],
+                node_from_value(body)
+            )
+        else:
+            details["body"]["payload"] = node_from_value(body)
+
+    def _aggregate_response_body(self, details: Dict[str, Any], response: har.Response) -> None:
+        status = response["status"]
+        resp = details["responses"].setdefault(status, {
+            "requests": 0,
+            "reason": response["statusText"],
+            "body": None,
+        })
+        resp["requests"] += 1
+
+        if "content" not in response:
+            return
+        body = self._extract_json_body(response["content"])
+        if body is None:
+            return
+
+        if resp["body"] is not None:
+            resp["body"] = merge_nodes(resp["body"], node_from_value(body))
+        else:
+            resp["body"] = node_from_value(body)
+
+    def _extract_json_body(self, data: Union[har.PostData, har.Content]) -> Any:
+        text = data.get("text", "")
+        mime = data.get("mimeType", "").lower()
+        if mime.startswith("application/json") and text:
+            return json.loads(text)
+        return None
 
     def _get_url(self, request: har.Request) -> str:
         """
@@ -165,17 +140,12 @@ class APISpecBuilder:
             base_url = base_url.rstrip("/")
 
         groups: Dict[str, List[har.Entry]] = {}
-
         for entry in entries:
             url = self._get_url(entry["request"])
             parsed = urlparse(url)
-            group_key = base_url if base_url else f"{parsed.scheme}://{parsed.netloc}"
 
+            group_key = base_url if base_url else f"{parsed.scheme}://{parsed.netloc}"
             if not url.startswith(group_key):
                 continue
-
-            if group_key not in groups:
-                groups[group_key] = []
-            groups[group_key].append(entry)
-
+            groups.setdefault(group_key, []).append(entry)
         return groups

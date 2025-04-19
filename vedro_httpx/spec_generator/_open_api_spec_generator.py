@@ -119,15 +119,15 @@ class OpenAPISpecGenerator:
         return headers
 
     def _build_request_body(self, details: Dict[str, Any]) -> Dict[str, Any]:
-        body_info = details.get("body")
-        if not body_info:
+        body_payload = details["body"]["payload"]
+        if body_payload is None:
             return {}
         return {
             "description": "Request body (JSON)",
-            "required": body_info["requests"] == details["total"],
+            "required": details["body"]["requests"] == details["total"],
             "content": {
                 "application/json": {
-                    "schema": to_json_schema(body_info["payload"])
+                    "schema": to_json_schema(body_payload)
                 }
             }
         }
