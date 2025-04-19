@@ -29,14 +29,17 @@ class OpenAPISpecGenerator:
     for parameters, request bodies, and responses.
     """
 
-    def __init__(self, *, standard_headers: Sequence[str] = STANDARD_HEADERS) -> None:
+    def __init__(self, *, standard_headers: Sequence[str] = STANDARD_HEADERS,
+                 include_constraints: bool = True) -> None:
         """
         Initialize the OpenAPISpecGenerator with standard headers to be excluded.
 
         :param standard_headers: A sequence of headers to be excluded from the spec,
                                  defaults to standard headers like 'accept' and 'content-type'.
+        :param include_constraints: if False, omit `minimum`/`maximum` etc. from schemas
         """
         self._standard_headers = set(standard_headers)
+        self._include_constraints = include_constraints
 
     def generate_spec(self, api_spec: Dict[str, Any]) -> str:
         """
@@ -152,7 +155,8 @@ class OpenAPISpecGenerator:
 
         content: Dict[str, Any] = {}
         for mime, info in body["content"].items():
-            schema = to_json_schema(info["payload"])
+            schema = to_json_schema(info["payload"],
+                                    include_constraints=self._include_constraints)
             content[mime] = {"schema": schema}
 
         return {
@@ -173,7 +177,10 @@ class OpenAPISpecGenerator:
             response = {"description": info["reason"]}
             if info["body"] is not None:
                 response["content"] = {
-                    "application/json": {"schema": to_json_schema(info["body"])}
+                    "application/json": {
+                        "schema": to_json_schema(info["body"],
+                                                 include_constraints=self._include_constraints)
+                    }
                 }
             responses[str(status)] = response
         return responses

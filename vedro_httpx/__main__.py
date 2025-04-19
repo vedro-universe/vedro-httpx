@@ -4,7 +4,8 @@ from typing import Optional
 from vedro_httpx.spec_generator import APISpecBuilder, HARReader, OpenAPISpecGenerator
 
 
-def generate_spec(har_directory: str, *, base_url: Optional[str] = None) -> str:
+def generate_spec(har_directory: str, *, base_url: Optional[str] = None,
+                  include_constraints: bool = True) -> str:
     """
     Generate an OpenAPI specification from HAR files in a specified directory.
 
@@ -15,6 +16,7 @@ def generate_spec(har_directory: str, *, base_url: Optional[str] = None) -> str:
 
     :param har_directory: The directory path where HAR files are located.
     :param base_url: Optional base URL to filter and group entries.
+    :param include_constraints: Flag to include or exclude JSON Schema constraints
     :return: The generated OpenAPI specification as a YAML string.
     """
     har_reader = HARReader(har_directory)
@@ -23,7 +25,7 @@ def generate_spec(har_directory: str, *, base_url: Optional[str] = None) -> str:
     api_spec_builder = APISpecBuilder()
     api_spec = api_spec_builder.build_spec(entries, base_url=base_url)
 
-    open_api_spec_generator = OpenAPISpecGenerator()
+    open_api_spec_generator = OpenAPISpecGenerator(include_constraints=include_constraints)
     open_api_spec = open_api_spec_generator.generate_spec(api_spec)
 
     return open_api_spec
@@ -45,9 +47,12 @@ def main() -> None:
         "Examples: 'http://localhost:8080/api' or 'http://localhost:8080/api/v1'"
     )
     parser.add_argument("--base-url", help=help_text, default=None)
+    parser.add_argument("--no-constraints", action="store_true", default=False,
+                        help="Omit JSON Schema constraints (minimum, maximum, minItems, etc.)")
 
     args = parser.parse_args()
-    open_api_spec = generate_spec(args.har_directory, base_url=args.base_url)
+    open_api_spec = generate_spec(args.har_directory, base_url=args.base_url,
+                                  include_constraints=not args.no_constraints)
     print(open_api_spec)
 
 
