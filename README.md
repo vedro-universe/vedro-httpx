@@ -5,7 +5,7 @@
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/vedro-httpx?style=flat-square)](https://pypi.python.org/pypi/vedro-httpx/)
 [![Python Version](https://img.shields.io/pypi/pyversions/vedro-httpx.svg?style=flat-square)](https://pypi.python.org/pypi/vedro-httpx/)
 
-[Vedro](https://vedro.io/) + [HTTPX](https://www.python-httpx.org/)
+> **Vedro ❤ HTTPX** – first‑class [HTTP client](https://www.python-httpx.org/) integration for the [Vedro](https://vedro.io/) framework.
 
 ## Installation
 
@@ -51,34 +51,10 @@ class Config(vedro.Config):
 </p>
 </details>
 
-## Usage
-
-### AsyncHTTPInterface
-
-```python
-from vedro_httpx import Response, AsyncHTTPInterface
-
-class AuthAPI(AsyncHTTPInterface):
-    def __init__(self, base_url: str = "http://localhost:8080") -> None:
-        super().__init__(base_url)
-
-    async def register(self, creds: dict[str, str]) -> Response:
-        return await self._request("POST", "/auth/register", json=creds)
-```
-
-### SyncHTTPInterface
-
-```python
-from vedro_httpx import Response, AsyncHTTPInterface
-
-class AuthAPI(AsyncHTTPInterface):
-    def __init__(self, base_url: str = "http://localhost:8080") -> None:
-        super().__init__(base_url)
-
-    async def register(self, creds: dict[str, str]) -> Response:
-        return await self._request("POST", "/auth/register", json=creds)
-```
-
 ## Documentation
 
-Check out the [documentation](https://vedro.io/docs/integrations/httpx-client) for additional information about `vedro-httpx`.
+All usage examples, advanced configuration, request‑recording and OpenAPI generation guides live in the official docs:
+
+👉 **[https://vedro.io/docs/integrations/httpx-client](https://vedro.io/docs/integrations/httpx-client)**
+
+Check them out to get the most out of *vedro-httpx!*
