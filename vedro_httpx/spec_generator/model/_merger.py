@@ -13,7 +13,7 @@ from ._nodes import (
 )
 from ._visitor import NodeVisitor
 
-__all__ = ("node_from_value", "merge_nodes", "NodeMerger",)
+__all__ = ("create_node", "merge_nodes", "NodeMerger",)
 
 
 T = TypeVar("T")
@@ -235,7 +235,7 @@ def merge_nodes(node1: Node, node2: Node, *, merger: NodeMerger = _merger) -> No
     return node1.accept(merger, other=node2)
 
 
-def node_from_value(value: Any) -> Node:
+def create_node(value: Any) -> Node:
     """
     Convert a native Python value into a corresponding `Node` instance.
 
@@ -258,12 +258,12 @@ def node_from_value(value: Any) -> Node:
     if isinstance(value, str):
         return StrNode()
     if isinstance(value, dict):
-        keys = {k: node_from_value(v) for k, v in value.items()}
+        keys = {k: create_node(v) for k, v in value.items()}
         return DictNode(keys=keys)
     if isinstance(value, list):
         element_node: Union[Node, None] = None
         for item in value:
-            item_node = node_from_value(item)
+            item_node = create_node(item)
             if element_node is None:
                 element_node = item_node
             else:

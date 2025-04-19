@@ -4,7 +4,7 @@ from urllib.parse import parse_qs, urlparse
 
 import vedro_httpx.recorder.har as har
 
-from .model import merge_nodes, node_from_value
+from .model import create_node, merge_nodes
 
 __all__ = ("APISpecBuilder",)
 
@@ -130,9 +130,9 @@ class APISpecBuilder:
         entry["requests"] += 1
 
         if entry["payload"] is None:
-            entry["payload"] = node_from_value(raw)
+            entry["payload"] = create_node(raw)
         else:
-            entry["payload"] = merge_nodes(entry["payload"], node_from_value(raw))
+            entry["payload"] = merge_nodes(entry["payload"], create_node(raw))
 
     def _aggregate_response_body(self, details: Dict[str, Any], response: har.Response) -> None:
         """
@@ -156,9 +156,9 @@ class APISpecBuilder:
             return
 
         if resp["body"] is not None:
-            resp["body"] = merge_nodes(resp["body"], node_from_value(body))
+            resp["body"] = merge_nodes(resp["body"], create_node(body))
         else:
-            resp["body"] = node_from_value(body)
+            resp["body"] = create_node(body)
 
     def _extract_json_body(self, data: Union[har.PostData, har.Content]) -> Any:
         """
