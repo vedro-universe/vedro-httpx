@@ -5,7 +5,7 @@
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/vedro-httpx?style=flat-square)](https://pypi.python.org/pypi/vedro-httpx/)
 [![Python Version](https://img.shields.io/pypi/pyversions/vedro-httpx.svg?style=flat-square)](https://pypi.python.org/pypi/vedro-httpx/)
 
-> **Vedro ❤ HTTPX** – first‑class [HTTP client](https://www.python-httpx.org/) integration for the [Vedro](https://vedro.io/) framework.
+> **Vedro ❤ HTTPX** – first‑class HTTP client integration for the [Vedro](https://vedro.io/) framework, powered by [HTTPX](https://www.python-httpx.org/).
 
 ## Installation
 
@@ -55,6 +55,6 @@ class Config(vedro.Config):
 
 All usage examples, advanced configuration, request‑recording and OpenAPI generation guides live in the official docs:
 
-👉 **[https://vedro.io/docs/integrations/httpx-client](https://vedro.io/docs/integrations/httpx-client)**
+👉 **[vedro.io/docs/integrations/httpx-client](https://vedro.io/docs/integrations/httpx-client)**
 
 Check them out to get the most out of *vedro-httpx!*
