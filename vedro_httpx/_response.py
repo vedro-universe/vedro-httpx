@@ -27,8 +27,4 @@ class Response(_Response):
         :param options: Console options that include configuration for rendering, such as width.
         :return: Yields rendered segments as part of the rich console's render process.
         """
-        # Check if a specific width limit has been set. If options.min_width and options.max_width
-        # are the same, then a specific width limit has been set and we use options.max_width.
-        # If not, we use a large default width of 1024^2 (which practically means no width limit).
-        width = options.max_width if options.min_width == options.max_width else 1024 ** 2
-        yield from self.__rich_renderer__.render(self, width=width)
+        yield from self.__rich_renderer__.render(self, width=options.max_width)
