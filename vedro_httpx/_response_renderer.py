@@ -59,35 +59,32 @@ class ResponseRenderer:
         self._body_max_length = body_max_length
         self._syntax_theme = syntax_theme
 
-    def render(self, response: Response, *, width: int) -> RenderResult:
+    def render(self, response: Response) -> RenderResult:
         """
         Render the HTTP response and optionally the request for rich console output.
 
         :param response: The HTTP response to render.
-        :param width: The width to use for rendering content.
         :return: Rendered response as a generator of console segments.
         """
         if self._include_request and response._request:
             # httpx does not provide the HTTP version of the request
-            yield from self.render_request(response.request,
-                                           width=width, http_version=response.http_version)
-        yield from self.render_response(response, width=width)
+            yield from self.render_request(response.request, http_version=response.http_version)
+        yield from self.render_response(response)
 
-    def render_response(self, response: Response, *, width: int = 80) -> RenderResult:
+    def render_response(self, response: Response) -> RenderResult:
         """
         Render the HTTP response, including headers and optionally the body.
 
         :param response: The HTTP response to render.
-        :param width: The maximum width for code blocks; defaults to 80.
         :return: Yields formatted response content for the rich console.
         """
         yield "← Response"
         headers, http_lexer = self.format_response_headers(response)
-        yield self._create_syntax(headers, http_lexer, width)
+        yield self._create_syntax(headers, http_lexer)
 
         if self._include_response_body:
             body, lexer = self.format_response_body(response)
-            yield self._create_syntax(body, lexer, width, indent_guides=True)
+            yield self._create_syntax(body, lexer, indent_guides=True)
 
     def format_response_headers(self, response: Response) -> Tuple[str, Lexer]:
         """
@@ -124,24 +121,22 @@ class ResponseRenderer:
                 return self._maybe_truncate(code), TextLexer()
         return self._maybe_truncate(code), lexer
 
-    def render_request(self, request: Request, *,
-                       width: int = 80, http_version: str = "HTTP/1.1") -> RenderResult:
+    def render_request(self, request: Request, *, http_version: str = "HTTP/1.1") -> RenderResult:
         """
         Render the HTTP request, including headers and optionally the body.
 
         :param request: The HTTP request to render.
-        :param width: The width to use for rendering.
         :param http_version: The HTTP version string to use in the request line.
         :return: Yields formatted request content for the rich console.
         """
         yield "→ Request"
         headers, http_lexer = self._format_request_headers(request, http_version=http_version)
-        yield self._create_syntax(headers, http_lexer, width)
+        yield self._create_syntax(headers, http_lexer)
 
         if self._include_request_body:
             if request.read():
                 body, lexer = self._format_request_body(request)
-                yield self._create_syntax(body, lexer, width, indent_guides=True)
+                yield self._create_syntax(body, lexer, indent_guides=True)
 
     def _format_request_headers(self, request: Request, http_version: str) -> Tuple[str, Lexer]:
         """
@@ -260,19 +255,16 @@ class ResponseRenderer:
                 lines.append(f"{header}: {value}")
         return lines
 
-    def _create_syntax(self, code: str, lexer: Union[Lexer, str], code_width: int,
-                       **kwargs: Any) -> Syntax:
+    def _create_syntax(self, code: str, lexer: Union[Lexer, str], **kwargs: Any) -> Syntax:
         """
         Create a rich Syntax object for syntax-highlighted rendering.
 
         :param code: Code content to highlight.
         :param lexer: Lexer instance or name to use for syntax highlighting.
-        :param code_width: Maximum width of the code block.
         :param kwargs: Additional keyword arguments for Syntax.
         :return: A rich Syntax object.
         """
-        return Syntax(code, lexer,
-                      theme=self._syntax_theme, word_wrap=True, code_width=code_width, **kwargs)
+        return Syntax(code, lexer, theme=self._syntax_theme, word_wrap=True, **kwargs)
 
     def _maybe_truncate(self, text: Union[str, bytes]) -> Union[str, bytes]:
         """

@@ -27,4 +27,4 @@ class Response(_Response):
         :param options: Console options that include configuration for rendering, such as width.
         :return: Yields rendered segments as part of the rich console's render process.
         """
-        yield from self.__rich_renderer__.render(self, width=options.max_width)
+        yield from self.__rich_renderer__.render(self)
